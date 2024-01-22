@@ -1,19 +1,21 @@
 /**
  * @file "simple_i2c_peripheral.c"
- * @author Frederich Stine 
+ * @author Frederich Stine
  * @brief Simple Asynchronous I2C Peripheral Implementation
  * @date 2024
  *
- * This source file is part of an example system for MITRE's 2024 Embedded System CTF (eCTF).
- * This code is being provided only for educational purposes for the 2024 MITRE eCTF competition,
- * and may not meet MITRE standards for quality. Use this code at your own risk!
+ * This source file is part of an example system for MITRE's 2024 Embedded
+ * System CTF (eCTF). This code is being provided only for educational purposes
+ * for the 2024 MITRE eCTF competition, and may not meet MITRE standards for
+ * quality. Use this code at your own risk!
  *
  * @copyright Copyright (c) 2024 The MITRE Corporation
  */
 
 #include "simple_i2c_peripheral.h"
 
-/******************************** GLOBAL DEFINITIONS ********************************/
+/******************************** GLOBAL DEFINITIONS
+ * ********************************/
 // Data for all of the I2C registers
 volatile uint8_t RECEIVE_REG[MAX_I2C_MESSAGE_LEN];
 volatile uint8_t RECEIVE_DONE_REG[1];
@@ -23,7 +25,7 @@ volatile uint8_t TRANSMIT_DONE_REG[1];
 volatile uint8_t TRANSMIT_LEN_REG[1];
 
 // Data structure to allow easy reference of I2C registers
-volatile uint8_t* I2C_REGS[6] = {
+volatile uint8_t *I2C_REGS[6] = {
     [RECEIVE] = RECEIVE_REG,
     [RECEIVE_DONE] = RECEIVE_DONE_REG,
     [RECEIVE_LEN] = RECEIVE_LEN_REG,
@@ -34,28 +36,27 @@ volatile uint8_t* I2C_REGS[6] = {
 
 // Data structure to allow easy reference to I2C register length
 int I2C_REGS_LEN[6] = {
-    [RECEIVE] = MAX_I2C_MESSAGE_LEN,
-    [RECEIVE_DONE] = 1,
-    [RECEIVE_LEN] = 1,
-    [TRANSMIT] = MAX_I2C_MESSAGE_LEN,
-    [TRANSMIT_DONE] = 1,
-    [TRANSMIT_LEN] = 1,
+    [RECEIVE] = MAX_I2C_MESSAGE_LEN,  [RECEIVE_DONE] = 1,  [RECEIVE_LEN] = 1,
+    [TRANSMIT] = MAX_I2C_MESSAGE_LEN, [TRANSMIT_DONE] = 1, [TRANSMIT_LEN] = 1,
 };
 
-/******************************** FUNCTION PROTOTYPES ********************************/
+/******************************** FUNCTION PROTOTYPES
+ * ********************************/
 static void i2c_simple_isr(void);
 
-/******************************** FUNCTION DEFINITIONS ********************************/
+/******************************** FUNCTION DEFINITIONS
+ * ********************************/
 /**
  * @brief Initialize the I2C Connection
- * 
+ *
  * @param addr: uint8_t, the address of the I2C peripheral
- * 
+ *
  * @return int: negative if error, zero if successful
  *
- * Initialize the I2C by enabling the module, setting the address, 
- * setting the correct frequency, and enabling the interrupt to our i2c_simple_isr
-*/
+ * Initialize the I2C by enabling the module, setting the address,
+ * setting the correct frequency, and enabling the interrupt to our
+ * i2c_simple_isr
+ */
 int i2c_simple_peripheral_init(uint8_t addr) {
     int error;
     // Initialize the I2C Interface
@@ -64,7 +65,7 @@ int i2c_simple_peripheral_init(uint8_t addr) {
         printf("Failed to initialize I2C.\n");
         return error;
     }
-    
+
     // Set frequency and clear FIFO
     MXC_I2C_SetFrequency(I2C_INTERFACE, I2C_FREQ);
     MXC_I2C_ClearRXFIFO(I2C_INTERFACE);
@@ -73,7 +74,8 @@ int i2c_simple_peripheral_init(uint8_t addr) {
     MXC_I2C_EnableInt(I2C_INTERFACE, MXC_F_I2C_INTFL0_RD_ADDR_MATCH, 0);
     MXC_I2C_EnableInt(I2C_INTERFACE, MXC_F_I2C_INTFL0_WR_ADDR_MATCH, 0);
     MXC_I2C_EnableInt(I2C_INTERFACE, MXC_F_I2C_INTFL0_STOP, 0);
-    MXC_NVIC_SetVector(MXC_I2C_GET_IRQ(MXC_I2C_GET_IDX(I2C_INTERFACE)), i2c_simple_isr);
+    MXC_NVIC_SetVector(MXC_I2C_GET_IRQ(MXC_I2C_GET_IDX(I2C_INTERFACE)),
+                       i2c_simple_isr);
     NVIC_EnableIRQ(MXC_I2C_GET_IRQ(MXC_I2C_GET_IDX(I2C_INTERFACE)));
     MXC_I2C_ClearFlags(I2C_INTERFACE, 0xFFFFFFFF, 0xFFFFFFFF);
 
@@ -86,11 +88,12 @@ int i2c_simple_peripheral_init(uint8_t addr) {
 
 /**
  * @brief ISR for the I2C Peripheral
- * 
- * This ISR allows for a fully asynchronous interface between controller and peripheral
- * Transactions are able to begin immediately after a transaction ends
-*/
-void i2c_simple_isr (void) {
+ *
+ * This ISR allows for a fully asynchronous interface between controller and
+ * peripheral Transactions are able to begin immediately after a transaction
+ * ends
+ */
+void i2c_simple_isr(void) {
     // Variables for state of ISR
     static bool WRITE_START = false;
     static int READ_INDEX = 0;
@@ -99,26 +102,26 @@ void i2c_simple_isr (void) {
 
     // Read interrupt flags
     uint32_t Flags = I2C_INTERFACE->intfl0;
-    
+
     // Transaction over interrupt
     if (Flags & MXC_F_I2C_INTFL0_STOP) {
-        
+
         // Ready any remaining data
         if (WRITE_START == true) {
-            MXC_I2C_ReadRXFIFO(I2C_INTERFACE, (volatile unsigned char*) &ACTIVE_REG, 1);
+            MXC_I2C_ReadRXFIFO(I2C_INTERFACE,
+                               (volatile unsigned char *)&ACTIVE_REG, 1);
             WRITE_START = false;
         }
         if (ACTIVE_REG <= MAX_REG) {
             int available = MXC_I2C_GetRXFIFOAvailable(I2C_INTERFACE);
-            if (available < (I2C_REGS_LEN[ACTIVE_REG]-WRITE_INDEX)) {
-                WRITE_INDEX += MXC_I2C_ReadRXFIFO(I2C_INTERFACE,
-                    &I2C_REGS[ACTIVE_REG][WRITE_INDEX],
+            if (available < (I2C_REGS_LEN[ACTIVE_REG] - WRITE_INDEX)) {
+                WRITE_INDEX += MXC_I2C_ReadRXFIFO(
+                    I2C_INTERFACE, &I2C_REGS[ACTIVE_REG][WRITE_INDEX],
                     MXC_I2C_GetRXFIFOAvailable(I2C_INTERFACE));
-            }
-            else {
-                WRITE_INDEX += MXC_I2C_ReadRXFIFO(I2C_INTERFACE,
-                    &I2C_REGS[ACTIVE_REG][WRITE_INDEX],
-                    I2C_REGS_LEN[ACTIVE_REG]-WRITE_INDEX);
+            } else {
+                WRITE_INDEX += MXC_I2C_ReadRXFIFO(
+                    I2C_INTERFACE, &I2C_REGS[ACTIVE_REG][WRITE_INDEX],
+                    I2C_REGS_LEN[ACTIVE_REG] - WRITE_INDEX);
             }
         } else {
             MXC_I2C_ClearRXFIFO(I2C_INTERFACE);
@@ -146,7 +149,8 @@ void i2c_simple_isr (void) {
     }
 
     // TX Fifo Threshold Met on Read
-    if (Flags & MXC_F_I2C_INTEN0_TX_THD && (I2C_INTERFACE->inten0 & MXC_F_I2C_INTEN0_TX_THD)) {
+    if (Flags & MXC_F_I2C_INTEN0_TX_THD &&
+        (I2C_INTERFACE->inten0 & MXC_F_I2C_INTEN0_TX_THD)) {
 
         if (Flags & MXC_F_I2C_INTFL0_TX_LOCKOUT) {
             MXC_I2C_ClearFlags(I2C_INTERFACE, MXC_F_I2C_INTFL0_TX_LOCKOUT, 0);
@@ -155,10 +159,11 @@ void i2c_simple_isr (void) {
         // 8 byte FIFO length by default
         // More data is needed within the FIFO
         if (ACTIVE_REG <= MAX_REG) {
-            READ_INDEX += MXC_I2C_WriteTXFIFO(I2C_INTERFACE,
-                (volatile unsigned char*)&I2C_REGS[ACTIVE_REG][READ_INDEX],
-                I2C_REGS_LEN[ACTIVE_REG]-READ_INDEX);
-            if (I2C_REGS_LEN[ACTIVE_REG]-1 == READ_INDEX) {
+            READ_INDEX += MXC_I2C_WriteTXFIFO(
+                I2C_INTERFACE,
+                (volatile unsigned char *)&I2C_REGS[ACTIVE_REG][READ_INDEX],
+                I2C_REGS_LEN[ACTIVE_REG] - READ_INDEX);
+            if (I2C_REGS_LEN[ACTIVE_REG] - 1 == READ_INDEX) {
                 MXC_I2C_DisableInt(I2C_INTERFACE, MXC_F_I2C_INTEN0_TX_THD, 0);
             }
         }
@@ -171,19 +176,24 @@ void i2c_simple_isr (void) {
     if (Flags & MXC_F_I2C_INTFL0_WR_ADDR_MATCH) {
         // Clear ISR flag
         MXC_I2C_ClearFlags(I2C_INTERFACE, MXC_F_I2C_INTFL0_WR_ADDR_MATCH, 0);
-        
+
         // TX_LOCKOUT Triggers at the start of a just-in-time read
         if (Flags & MXC_F_I2C_INTFL0_TX_LOCKOUT) {
             MXC_I2C_ClearFlags(I2C_INTERFACE, MXC_F_I2C_INTFL0_TX_LOCKOUT, 0);
 
             // Select active register
-            MXC_I2C_ReadRXFIFO(I2C_INTERFACE, (volatile unsigned char*) &ACTIVE_REG, 1);
-            
+            MXC_I2C_ReadRXFIFO(I2C_INTERFACE,
+                               (volatile unsigned char *)&ACTIVE_REG, 1);
+
             // Write data to TX Buf
             if (ACTIVE_REG <= MAX_REG) {
-                READ_INDEX += MXC_I2C_WriteTXFIFO(I2C_INTERFACE, (volatile unsigned char*)I2C_REGS[ACTIVE_REG], I2C_REGS_LEN[ACTIVE_REG]);
+                READ_INDEX += MXC_I2C_WriteTXFIFO(
+                    I2C_INTERFACE,
+                    (volatile unsigned char *)I2C_REGS[ACTIVE_REG],
+                    I2C_REGS_LEN[ACTIVE_REG]);
                 if (READ_INDEX < I2C_REGS_LEN[ACTIVE_REG]) {
-                    MXC_I2C_EnableInt(I2C_INTERFACE, MXC_F_I2C_INTEN0_TX_THD, 0);
+                    MXC_I2C_EnableInt(I2C_INTERFACE, MXC_F_I2C_INTEN0_TX_THD,
+                                      0);
                 }
             }
         }
@@ -205,23 +215,23 @@ void i2c_simple_isr (void) {
     if (Flags & MXC_F_I2C_INTEN0_RX_THD) {
         // We always write a register before writing data so select register
         if (WRITE_START == true) {
-            MXC_I2C_ReadRXFIFO(I2C_INTERFACE, (volatile unsigned char*) &ACTIVE_REG, 1);
+            MXC_I2C_ReadRXFIFO(I2C_INTERFACE,
+                               (volatile unsigned char *)&ACTIVE_REG, 1);
             WRITE_START = false;
         }
         // Read remaining data
         if (ACTIVE_REG <= MAX_REG) {
             int available = MXC_I2C_GetRXFIFOAvailable(I2C_INTERFACE);
-            if (available < (I2C_REGS_LEN[ACTIVE_REG]-WRITE_INDEX)) {
-                WRITE_INDEX += MXC_I2C_ReadRXFIFO(I2C_INTERFACE,
-                    &I2C_REGS[ACTIVE_REG][WRITE_INDEX],
+            if (available < (I2C_REGS_LEN[ACTIVE_REG] - WRITE_INDEX)) {
+                WRITE_INDEX += MXC_I2C_ReadRXFIFO(
+                    I2C_INTERFACE, &I2C_REGS[ACTIVE_REG][WRITE_INDEX],
                     MXC_I2C_GetRXFIFOAvailable(I2C_INTERFACE));
+            } else {
+                WRITE_INDEX += MXC_I2C_ReadRXFIFO(
+                    I2C_INTERFACE, &I2C_REGS[ACTIVE_REG][WRITE_INDEX],
+                    I2C_REGS_LEN[ACTIVE_REG] - WRITE_INDEX);
             }
-            else {
-                WRITE_INDEX += MXC_I2C_ReadRXFIFO(I2C_INTERFACE,
-                    &I2C_REGS[ACTIVE_REG][WRITE_INDEX],
-                    I2C_REGS_LEN[ACTIVE_REG]-WRITE_INDEX);
-            }
-        // Clear out FIFO if invalid register specified
+            // Clear out FIFO if invalid register specified
         } else {
             MXC_I2C_ClearRXFIFO(I2C_INTERFACE);
         }

@@ -4,9 +4,10 @@
  * @brief Simplified Crypto API Implementation
  * @date 2024
  *
- * This source file is part of an example system for MITRE's 2024 Embedded System CTF (eCTF).
- * This code is being provided only for educational purposes for the 2024 MITRE eCTF competition,
- * and may not meet MITRE standards for quality. Use this code at your own risk!
+ * This source file is part of an example system for MITRE's 2024 Embedded
+ * System CTF (eCTF). This code is being provided only for educational purposes
+ * for the 2024 MITRE eCTF competition, and may not meet MITRE standards for
+ * quality. Use this code at your own risk!
  *
  * @copyright Copyright (c) 2024 The MITRE Corporation
  */
@@ -17,7 +18,8 @@
 #include <stdint.h>
 #include <string.h>
 
-/******************************** FUNCTION PROTOTYPES ********************************/
+/******************************** FUNCTION PROTOTYPES
+ * ********************************/
 /** @brief Encrypts plaintext using a symmetric cipher
  *
  * @param plaintext A pointer to a buffer of length len containing the
@@ -31,8 +33,9 @@
  *
  * @return 0 on success, -1 on bad length, other non-zero for other error
  */
-int encrypt_sym(uint8_t *plaintext, size_t len, uint8_t *key, uint8_t *ciphertext) {
-    Aes ctx; // Context for encryption
+int encrypt_sym(uint8_t *plaintext, size_t len, uint8_t *key,
+                uint8_t *ciphertext) {
+    Aes ctx;    // Context for encryption
     int result; // Library result
 
     // Ensure valid length
@@ -43,7 +46,6 @@ int encrypt_sym(uint8_t *plaintext, size_t len, uint8_t *key, uint8_t *ciphertex
     result = wc_AesSetKey(&ctx, key, 16, NULL, AES_ENCRYPTION);
     if (result != 0)
         return result; // Report error
-
 
     // Encrypt each block
     for (int i = 0; i < len - 1; i += BLOCK_SIZE) {
@@ -67,8 +69,9 @@ int encrypt_sym(uint8_t *plaintext, size_t len, uint8_t *key, uint8_t *ciphertex
  *
  * @return 0 on success, -1 on bad length, other non-zero for other error
  */
-int decrypt_sym(uint8_t *ciphertext, size_t len, uint8_t *key, uint8_t *plaintext) {
-    Aes ctx; // Context for decryption
+int decrypt_sym(uint8_t *ciphertext, size_t len, uint8_t *key,
+                uint8_t *plaintext) {
+    Aes ctx;    // Context for decryption
     int result; // Library result
 
     // Ensure valid length
@@ -94,8 +97,8 @@ int decrypt_sym(uint8_t *ciphertext, size_t len, uint8_t *key, uint8_t *plaintex
  * @param data A pointer to a buffer of length len containing the data
  *          to be hashed
  * @param len The length of the plaintext to encrypt
- * @param hash_out A pointer to a buffer of length HASH_SIZE (16 bytes) where the resulting
- *          hash output will be written to
+ * @param hash_out A pointer to a buffer of length HASH_SIZE (16 bytes) where
+ * the resulting hash output will be written to
  *
  * @return 0 on success, non-zero for other error
  */

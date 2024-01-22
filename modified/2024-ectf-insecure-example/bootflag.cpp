@@ -43,6 +43,6 @@ int main(int argc, char const *argv[]) {
 		flag[i]		= deobfuscate(aseiFuengleR[i], djFIehjkklIH[i]);
 		flag[i + 1] = 0;
 	}
-    cout << flag << endl;
+	cout << flag << endl;
 	return 0;
 }
