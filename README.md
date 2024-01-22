@@ -1,6 +1,6 @@
-# Mitre 2023 eCTF Code
+# Mitre 2024 eCTF Code
 
-This repo will host all of our code for the 2023 Mitre eCTF competition.
+This repo will host all of our code for the 2024 Mitre eCTF competition.
 
 ## Daily Routine
 
