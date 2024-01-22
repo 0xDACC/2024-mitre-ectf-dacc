@@ -27,7 +27,8 @@ def build_ap(
     token,
     component_cnt,
     component_ids,
-    boot_message
+    boot_message,
+    test=False
 ):
     """
     Build an application processor.
@@ -68,16 +69,28 @@ def build_ap(
         os.remove(output_img)
 
     logger.info("Running build")
-    output = asyncio.run(run_shell(
-        f"cd {design} && "
-        f"pwd && "
-        f"nix-shell --command "
-        f"\"cd application_processor && "
-        f" make clean && "
-        f" make && make release && "
-        f" cp build/max78000.elf {output_elf} && "
-        f" cp build/max78000.bin {output_bin}\""
-    ))
+    if test:
+        output = asyncio.run(run_shell(
+            f"cd {design} && "
+            f"pwd && "
+            f"nix-shell --command "
+            f"\"cd application_processor && "
+            f" make clean && "
+            f" compiledb make && make release && "
+            f" cp build/max78000.elf {output_elf} && "
+            f" cp build/max78000.bin {output_bin}\""
+        ))
+    else:
+        output = asyncio.run(run_shell(
+            f"cd {design} && "
+            f"pwd && "
+            f"nix-shell --command "
+            f"\"cd application_processor && "
+            f" make clean && "
+            f" make && make release && "
+            f" cp build/max78000.elf {output_elf} && "
+            f" cp build/max78000.bin {output_bin}\""
+        ))
 
     if not os.path.exists(output_bin):
         logger.error("Error: tool did not build properly")
@@ -97,7 +110,10 @@ def main():
         prog="eCTF Build Application Processor Tool",
         description="Build an Application Processor using Nix"
     )
-
+    parser.add_argument(
+        "-test", "--test", action="store_true",
+        help="Build compiledb for testing"
+    )
     parser.add_argument(
         "-d", "--design", required=True, type=Path,
         help="Path to the root directory of the included design"
@@ -150,7 +166,8 @@ def main():
         args.token,
         args.component_cnt,
         args.component_ids,
-        args.boot_message
+        args.boot_message,
+        args.test
     )
  
 

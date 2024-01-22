@@ -27,7 +27,8 @@ def build_component(
     boot_message,
     attestation_location,
     attestation_date,
-    attestation_customer
+    attestation_customer,
+    test=False
 ):
     """
     Build an application processor.
@@ -68,16 +69,28 @@ def build_component(
         os.remove(output_img)
 
     logger.info("Running build")
-    output = asyncio.run(run_shell(
+    if test:
+        output = asyncio.run(run_shell(
         f"cd {design} && "
         f"pwd && "
         f"nix-shell --command "
         f"\"cd component && "
         f" make clean && "
-        f" make && make release && "
+        f" compiledb make && make release && "
         f" cp build/max78000.elf {output_elf} && "
         f" cp build/max78000.bin {output_bin}\""
     ))
+    else:
+        output = asyncio.run(run_shell(
+            f"cd {design} && "
+            f"pwd && "
+            f"nix-shell --command "
+            f"\"cd component && "
+            f" make clean && "
+            f" make && make release && "
+            f" cp build/max78000.elf {output_elf} && "
+            f" cp build/max78000.bin {output_bin}\""
+        ))
 
     if not os.path.exists(output_bin):
         logger.error("Error: tool did not build properly")
@@ -96,6 +109,11 @@ def main():
     parser = argparse.ArgumentParser(
         prog="eCTF Build Application Processor Tool",
         description="Build an Application Processor using Nix"
+    )
+
+    parser.add_argument(
+        "-test", "--test", required=False, action="store_true",
+        help="Build in test mode"
     )
 
     parser.add_argument(
@@ -150,7 +168,8 @@ def main():
         args.boot_message,
         args.attestation_location,
         args.attestation_date,
-        args.attestation_customer
+        args.attestation_customer,
+        args.test
     )
  
 
