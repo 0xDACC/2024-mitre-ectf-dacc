@@ -1,11 +1,52 @@
 # TODOs
 
-- Encrypt I2C Communication
-  - ECDHE Encryption Scheme
-  - Encrypt all packets with AES-128-CTR mode
-  - Derive Private Key from RNG (does the board have an RNG?)
-  - SHA256 of ECDH Shared Secret
-  - First 16 bytes of hash as AES key, Next 8 as IV
-  - Append a hard-coded? HMAC to end of packet
-- Hash Replacement Token
-  - Stored as SHA256 hash
+## List
+
+- [ ] None (Doesn't need to be secure but also needs to not introduce any vulnerabilities)
+- [ ] Must take <3s
+- [ ] Completed All Objectives
+
+## Attest
+
+- [ ] Attestion PIN - 6 byte integer
+- [ ] Store Attestation PIN as SHA256 hash of PIN with however many iterations takes 1.25s to limit brute force
+- [ ] Store Attestation Data AES-128-CTR mode encrypted with 0x0000 ++ PIN as IV and SHA256 has of PIN with however many iterations minus 1 as key
+- [ ] Must take <3s
+- [ ] Completed All Objectives
+
+## Replace
+
+- [ ] Replacement token - 16 byte integer
+- [ ] Store replacement token as SHA256 hash
+- [ ] Store predefined ECC public key and generate a random number [RNG Example](https://github.com/Analog-Devices-MSDK/msdk/tree/e20c2cfe54f3d8880d29c11390700840e7e7ba27/Examples/MAX78000/TRNG)
+- [ ] Ask for component to sign random number
+- [ ] Verify signature
+- [ ] Completed All Objectives
+
+## Boot
+
+- [ ] Store predefined ECC public key 1 on AP and generate a random number [RNG Example](https://github.com/Analog-Devices-MSDK/msdk/tree/e20c2cfe54f3d8880d29c11390700840e7e7ba27/Examples/MAX78000/TRNG)
+- [ ] Ask for Component1 to sign random number
+- [ ] Verify signature
+- [ ] Store predefined ECC public key 2 on Component1
+- [ ] Ask for AP to sign random number
+- [ ] Verify signature
+- [ ] Store predefined ECC public key 3 on Component2
+- [ ] Ask for AP to sign random number
+- [ ] Verify signature
+- [ ] Store predefined ECC public key 4 on AP
+- [ ] Ask for Component2 to sign random number
+- [ ] Verify signature
+- [ ] If any of the above do not check out the integrity has been compromised
+- [ ] Completed All Objectives
+
+## Secure Send & Receive
+
+- [ ] ECDHE Encryption Scheme
+- [ ] Encrypt all packets with AES-128-CTR mode
+- [ ] Derive Private Key randomly
+- [ ] SHA256 ECDH Shared Secret
+- [ ] First 16 bytes of hash as AES key, Next 8 as IV
+- [ ] Negotiate HMAC key over encrypted channel
+- [ ] Append an HMAC to end of all other packets before encrypting
+- [ ] Completed All Objectives
