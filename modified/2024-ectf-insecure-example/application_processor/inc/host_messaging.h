@@ -76,6 +76,6 @@
 void recv_input(const char *msg, char *buf, int buflen);
 
 // Prints a buffer of bytes as a hex string
-void print_hex(uint8_t *buf, size_t len);
+void print_hex(const uint8_t *buf, size_t len);
 
 #endif

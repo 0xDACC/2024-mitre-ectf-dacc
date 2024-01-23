@@ -20,14 +20,16 @@ void recv_input(const char *msg, char *buf, int buflen) {
     print_debug(msg);
     fflush(0);
     print_ack();
-    if (fgets(buf, buflen, stdin)) {
-        buf[strcspn(buf, "\n")] = '\0';
-    }
-    puts("");
+    char fmt[13] = "%";
+    snprintf(fmt + 1, 11, "%d", buflen - 1);
+    strcat(fmt, "s");
+    scanf(fmt, buf);
+    printf("\n");
 }
 // Prints a buffer of bytes as a hex string
-void print_hex(uint8_t *buf, size_t len) {
-    for (int i = 0; i < len; i++)
+void print_hex(const uint8_t *buf, size_t len) {
+    for (int i = 0; i < len; ++i) {
         printf("%02x", buf[i]);
+    }
     printf("\n");
 }
