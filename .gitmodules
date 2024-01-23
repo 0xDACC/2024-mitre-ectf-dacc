@@ -1,3 +1,0 @@
-[submodule "modified/lib/tinycrypt"]
-	path = modified/lib/tinycrypt
-	url = https://github.com/intel/tinycrypt
