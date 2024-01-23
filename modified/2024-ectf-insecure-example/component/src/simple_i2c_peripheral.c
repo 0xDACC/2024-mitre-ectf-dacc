@@ -58,7 +58,7 @@ static void i2c_simple_isr(void);
  * i2c_simple_isr
  */
 int i2c_simple_peripheral_init(uint8_t addr) {
-    int error;
+    int error = 0;
     // Initialize the I2C Interface
     error = MXC_I2C_Init(I2C_INTERFACE, false, addr);
     if (error != E_NO_ERROR) {
@@ -104,7 +104,7 @@ void i2c_simple_isr(void) {
     uint32_t Flags = I2C_INTERFACE->intfl0;
 
     // Transaction over interrupt
-    if (Flags & MXC_F_I2C_INTFL0_STOP) {
+    if ((Flags & MXC_F_I2C_INTFL0_STOP) != 0) {
 
         // Ready any remaining data
         if (WRITE_START == true) {
@@ -149,10 +149,10 @@ void i2c_simple_isr(void) {
     }
 
     // TX Fifo Threshold Met on Read
-    if (Flags & MXC_F_I2C_INTEN0_TX_THD &&
-        (I2C_INTERFACE->inten0 & MXC_F_I2C_INTEN0_TX_THD)) {
+    if ((Flags & MXC_F_I2C_INTEN0_TX_THD) != 0 &&
+        (I2C_INTERFACE->inten0 & MXC_F_I2C_INTEN0_TX_THD) != 0) {
 
-        if (Flags & MXC_F_I2C_INTFL0_TX_LOCKOUT) {
+        if ((Flags & MXC_F_I2C_INTFL0_TX_LOCKOUT) != 0) {
             MXC_I2C_ClearFlags(I2C_INTERFACE, MXC_F_I2C_INTFL0_TX_LOCKOUT, 0);
         }
         // 2 bytes in TX fifo triggers threshold by default
@@ -160,8 +160,7 @@ void i2c_simple_isr(void) {
         // More data is needed within the FIFO
         if (ACTIVE_REG <= MAX_REG) {
             READ_INDEX += MXC_I2C_WriteTXFIFO(
-                I2C_INTERFACE,
-                (volatile unsigned char *)&I2C_REGS[ACTIVE_REG][READ_INDEX],
+                I2C_INTERFACE, &I2C_REGS[ACTIVE_REG][READ_INDEX],
                 I2C_REGS_LEN[ACTIVE_REG] - READ_INDEX);
             if (I2C_REGS_LEN[ACTIVE_REG] - 1 == READ_INDEX) {
                 MXC_I2C_DisableInt(I2C_INTERFACE, MXC_F_I2C_INTEN0_TX_THD, 0);
@@ -173,12 +172,12 @@ void i2c_simple_isr(void) {
     }
 
     // Read from Peripheral from Controller Match
-    if (Flags & MXC_F_I2C_INTFL0_WR_ADDR_MATCH) {
+    if ((Flags & MXC_F_I2C_INTFL0_WR_ADDR_MATCH) != 0) {
         // Clear ISR flag
         MXC_I2C_ClearFlags(I2C_INTERFACE, MXC_F_I2C_INTFL0_WR_ADDR_MATCH, 0);
 
         // TX_LOCKOUT Triggers at the start of a just-in-time read
-        if (Flags & MXC_F_I2C_INTFL0_TX_LOCKOUT) {
+        if ((Flags & MXC_F_I2C_INTFL0_TX_LOCKOUT) != 0) {
             MXC_I2C_ClearFlags(I2C_INTERFACE, MXC_F_I2C_INTFL0_TX_LOCKOUT, 0);
 
             // Select active register
@@ -187,10 +186,9 @@ void i2c_simple_isr(void) {
 
             // Write data to TX Buf
             if (ACTIVE_REG <= MAX_REG) {
-                READ_INDEX += MXC_I2C_WriteTXFIFO(
-                    I2C_INTERFACE,
-                    (volatile unsigned char *)I2C_REGS[ACTIVE_REG],
-                    I2C_REGS_LEN[ACTIVE_REG]);
+                READ_INDEX +=
+                    MXC_I2C_WriteTXFIFO(I2C_INTERFACE, I2C_REGS[ACTIVE_REG],
+                                        I2C_REGS_LEN[ACTIVE_REG]);
                 if (READ_INDEX < I2C_REGS_LEN[ACTIVE_REG]) {
                     MXC_I2C_EnableInt(I2C_INTERFACE, MXC_F_I2C_INTEN0_TX_THD,
                                       0);
@@ -200,7 +198,7 @@ void i2c_simple_isr(void) {
     }
 
     // Write to Peripheral from Controller Match
-    if (Flags & MXC_F_I2C_INTFL0_RD_ADDR_MATCH) {
+    if ((Flags & MXC_F_I2C_INTFL0_RD_ADDR_MATCH) != 0) {
         // Set write start variable
         WRITE_START = true;
 
@@ -212,7 +210,7 @@ void i2c_simple_isr(void) {
     }
 
     // RX Fifo Threshold Met on Write
-    if (Flags & MXC_F_I2C_INTEN0_RX_THD) {
+    if ((Flags & MXC_F_I2C_INTEN0_RX_THD) != 0) {
         // We always write a register before writing data so select register
         if (WRITE_START == true) {
             MXC_I2C_ReadRXFIFO(I2C_INTERFACE,

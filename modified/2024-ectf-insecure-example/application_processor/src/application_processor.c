@@ -104,51 +104,6 @@ typedef enum {
 // Variable for information stored in flash memory
 flash_entry flash_status;
 
-/********************************* REFERENCE FLAG
- * **********************************/
-// trust me, it's easier to get the boot reference flag by
-// getting this running than to try to untangle this
-// NOTE: you're not allowed to do this in your code
-// Remove this in your design
-typedef uint32_t aErjfkdfru;
-const aErjfkdfru aseiFuengleR[] = {
-    0x1ffe4b6, 0x3098ac,  0x2f56101, 0x11a38bb, 0x485124,  0x11644a7, 0x3c74e8,
-    0x3c74e8,  0x2f56101, 0x12614f7, 0x1ffe4b6, 0x11a38bb, 0x1ffe4b6, 0x12614f7,
-    0x1ffe4b6, 0x12220e3, 0x3098ac,  0x1ffe4b6, 0x2ca498,  0x11a38bb, 0xe6d3b7,
-    0x1ffe4b6, 0x127bc,   0x3098ac,  0x11a38bb, 0x1d073c6, 0x51bd0,   0x127bc,
-    0x2e590b1, 0x1cc7fb2, 0x1d073c6, 0xeac7cb,  0x51bd0,   0x2ba13d5, 0x2b22bad,
-    0x2179d2e, 0};
-const aErjfkdfru djFIehjkklIH[] = {
-    0x138e798, 0x2cdbb14, 0x1f9f376, 0x23bcfda, 0x1d90544, 0x1cad2d2, 0x860e2c,
-    0x860e2c,  0x1f9f376, 0x38ec6f2, 0x138e798, 0x23bcfda, 0x138e798, 0x38ec6f2,
-    0x138e798, 0x31dc9ea, 0x2cdbb14, 0x138e798, 0x25cbe0c, 0x23bcfda, 0x199a72,
-    0x138e798, 0x11c82b4, 0x2cdbb14, 0x23bcfda, 0x3225338, 0x18d7fbc, 0x11c82b4,
-    0x35ff56,  0x2b15630, 0x3225338, 0x8a977a,  0x18d7fbc, 0x29067fe, 0x1ae6dee,
-    0x4431c8,  0};
-typedef int skerufjp;
-skerufjp siNfidpL(skerufjp verLKUDSfj) {
-    aErjfkdfru ubkerpYBd = 12 + 1;
-    skerufjp xUrenrkldxpxx = 2253667944 % 0x432a1f32;
-    aErjfkdfru UfejrlcpD = 1361423303;
-    verLKUDSfj = (verLKUDSfj + 0x12345678) % 60466176;
-    while (xUrenrkldxpxx-- != 0) {
-        verLKUDSfj = (ubkerpYBd * verLKUDSfj + UfejrlcpD) % 0x39aa400;
-    }
-    return verLKUDSfj;
-}
-typedef uint8_t kkjerfI;
-kkjerfI deobfuscate(aErjfkdfru veruioPjfke, aErjfkdfru veruioPjfwe) {
-    skerufjp fjekovERf = 2253667944 % 0x432a1f32;
-    aErjfkdfru veruicPjfwe, verulcPjfwe;
-    while (fjekovERf-- != 0) {
-        veruioPjfwe = (veruioPjfwe - siNfidpL(veruioPjfke)) % 0x39aa400;
-        veruioPjfke = (veruioPjfke - siNfidpL(veruioPjfwe)) % 60466176;
-    }
-    veruicPjfwe = (veruioPjfke + 0x39aa400) % 60466176;
-    verulcPjfwe = (veruioPjfwe + 60466176) % 0x39aa400;
-    return veruicPjfwe * 60466176 + verulcPjfwe - 89;
-}
-
 /******************************* POST BOOT FUNCTIONALITY
  * *********************************/
 /**
@@ -205,7 +160,7 @@ int get_provisioned_ids(uint32_t *buffer) {
 
 // Initialize the device
 // This must be called on startup to initialize the flash and i2c interfaces
-void init() {
+void init(void) {
 
     // Enable global interrupts
     __enable_irq();
@@ -254,18 +209,18 @@ int issue_cmd(i2c_addr_t addr, uint8_t *transmit, uint8_t *receive) {
 /******************************** COMPONENT COMMS
  * ********************************/
 
-int scan_components() {
+int scan_components(void) {
     // Print out provisioned component IDs
-    for (unsigned i = 0; i < flash_status.component_cnt; i++) {
+    for (unsigned i = 0; i < flash_status.component_cnt; ++i) {
         print_info("P>0x%08x\n", flash_status.component_ids[i]);
     }
 
     // Buffers for board link communication
-    uint8_t receive_buffer[MAX_I2C_MESSAGE_LEN];
-    uint8_t transmit_buffer[MAX_I2C_MESSAGE_LEN];
+    uint8_t receive_buffer[MAX_I2C_MESSAGE_LEN] = {0};
+    uint8_t transmit_buffer[MAX_I2C_MESSAGE_LEN] = {0};
 
     // Scan scan command to each component
-    for (i2c_addr_t addr = 0x8; addr < 0x7F; addr++) {
+    for (i2c_addr_t addr = 0x8; addr < 0x7F; ++addr) {
         // I2C Blacklist - 0x36 conflicts with separate device on MAX78000FTHR
         if (addr == 0x36) {
             continue;
@@ -280,7 +235,7 @@ int scan_components() {
 
         // Success, device is present
         if (len > 0) {
-            scan_message *scan = (scan_message *)receive_buffer;
+            const scan_message *scan = (scan_message *)receive_buffer;
             print_info("F>0x%08x\n", scan->component_id);
         }
     }
@@ -288,13 +243,13 @@ int scan_components() {
     return SUCCESS_RETURN;
 }
 
-int validate_components() {
+int validate_components(void) {
     // Buffers for board link communication
-    uint8_t receive_buffer[MAX_I2C_MESSAGE_LEN];
-    uint8_t transmit_buffer[MAX_I2C_MESSAGE_LEN];
+    uint8_t receive_buffer[MAX_I2C_MESSAGE_LEN] = {0};
+    uint8_t transmit_buffer[MAX_I2C_MESSAGE_LEN] = {0};
 
     // Send validate command to each component
-    for (unsigned i = 0; i < flash_status.component_cnt; i++) {
+    for (unsigned i = 0; i < flash_status.component_cnt; ++i) {
         // Set the I2C address of the component
         i2c_addr_t addr =
             component_id_to_i2c_addr(flash_status.component_ids[i]);
@@ -310,7 +265,7 @@ int validate_components() {
             return ERROR_RETURN;
         }
 
-        validate_message *validate = (validate_message *)receive_buffer;
+        const validate_message *validate = (validate_message *)receive_buffer;
         // Check that the result is correct
         if (validate->component_id != flash_status.component_ids[i]) {
             print_error("Component ID: 0x%08x invalid\n",
@@ -321,13 +276,13 @@ int validate_components() {
     return SUCCESS_RETURN;
 }
 
-int boot_components() {
+int boot_components(void) {
     // Buffers for board link communication
-    uint8_t receive_buffer[MAX_I2C_MESSAGE_LEN];
-    uint8_t transmit_buffer[MAX_I2C_MESSAGE_LEN];
+    uint8_t receive_buffer[MAX_I2C_MESSAGE_LEN] = {0};
+    uint8_t transmit_buffer[MAX_I2C_MESSAGE_LEN] = {0};
 
     // Send boot command to each component
-    for (unsigned i = 0; i < flash_status.component_cnt; i++) {
+    for (unsigned i = 0; i < flash_status.component_cnt; ++i) {
         // Set the I2C address of the component
         i2c_addr_t addr =
             component_id_to_i2c_addr(flash_status.component_ids[i]);
@@ -351,8 +306,8 @@ int boot_components() {
 
 int attest_component(uint32_t component_id) {
     // Buffers for board link communication
-    uint8_t receive_buffer[MAX_I2C_MESSAGE_LEN];
-    uint8_t transmit_buffer[MAX_I2C_MESSAGE_LEN];
+    uint8_t receive_buffer[MAX_I2C_MESSAGE_LEN] = {0};
+    uint8_t transmit_buffer[MAX_I2C_MESSAGE_LEN] = {0};
 
     // Set the I2C address of the component
     i2c_addr_t addr = component_id_to_i2c_addr(component_id);
@@ -379,7 +334,7 @@ int attest_component(uint32_t component_id) {
 // Boot sequence
 // YOUR DESIGN MUST NOT CHANGE THIS FUNCTION
 // Boot message is customized through the AP_BOOT_MSG macro
-void boot() {
+void boot(void) {
 // Example of how to utilize included simple_crypto.h
 #ifdef CRYPTO_EXAMPLE
     // This string is 16 bytes long including null terminator
@@ -435,10 +390,10 @@ void boot() {
 }
 
 // Compare the entered PIN to the correct PIN
-int validate_pin() {
-    char buf[50];
-    recv_input("Enter pin: ", buf);
-    if (!strcmp(buf, AP_PIN)) {
+int validate_pin(void) {
+    char buf[7] = {0};
+    recv_input("Enter pin: ", buf, sizeof(buf));
+    if (strcmp(buf, AP_PIN) == 0) {
         print_debug("Pin Accepted!\n");
         return SUCCESS_RETURN;
     }
@@ -447,10 +402,10 @@ int validate_pin() {
 }
 
 // Function to validate the replacement token
-int validate_token() {
-    char buf[50];
-    recv_input("Enter token: ", buf);
-    if (!strcmp(buf, AP_TOKEN)) {
+int validate_token(void) {
+    char buf[17] = {0};
+    recv_input("Enter token: ", buf, sizeof(buf));
+    if (strcmp(buf, AP_TOKEN) == 0) {
         print_debug("Token Accepted!\n");
         return SUCCESS_RETURN;
     }
@@ -459,24 +414,16 @@ int validate_token() {
 }
 
 // Boot the components and board if the components validate
-void attempt_boot() {
-    if (validate_components()) {
+void attempt_boot(void) {
+    if (validate_components() != SUCCESS_RETURN) {
         print_error("Components could not be validated\n");
         return;
     }
     print_debug("All Components validated\n");
-    if (boot_components()) {
+    if (boot_components() != SUCCESS_RETURN) {
         print_error("Failed to boot all components\n");
         return;
     }
-    // Reference design flag
-    // Remove this in your design
-    char flag[37];
-    for (int i = 0; aseiFuengleR[i]; i++) {
-        flag[i] = deobfuscate(aseiFuengleR[i], djFIehjkklIH[i]);
-        flag[i + 1] = 0;
-    }
-    print_debug("%s\n", flag);
     // Print boot message
     // This always needs to be printed when booting
     print_info("AP>%s\n", AP_BOOT_MSG);
@@ -486,23 +433,23 @@ void attempt_boot() {
 }
 
 // Replace a component if the PIN is correct
-void attempt_replace() {
-    char buf[50];
+void attempt_replace(void) {
+    char buf[5] = {0};
 
-    if (validate_token()) {
+    if (validate_token() != SUCCESS_RETURN) {
         return;
     }
 
     uint32_t component_id_in = 0;
     uint32_t component_id_out = 0;
 
-    recv_input("Component ID In: ", buf);
+    recv_input("Component ID In: ", buf, sizeof(buf));
     sscanf(buf, "%x", &component_id_in);
-    recv_input("Component ID Out: ", buf);
+    recv_input("Component ID Out: ", buf, sizeof(buf));
     sscanf(buf, "%x", &component_id_out);
 
     // Find the component to swap out
-    for (unsigned i = 0; i < flash_status.component_cnt; i++) {
+    for (unsigned i = 0; i < flash_status.component_cnt; ++i) {
         if (flash_status.component_ids[i] == component_id_out) {
             flash_status.component_ids[i] = component_id_in;
 
@@ -524,14 +471,14 @@ void attempt_replace() {
 }
 
 // Attest a component if the PIN is correct
-void attempt_attest() {
-    char buf[50];
+void attempt_attest(void) {
+    char buf[5] = {0};
 
-    if (validate_pin()) {
+    if (validate_pin() != SUCCESS_RETURN) {
         return;
     }
-    uint32_t component_id;
-    recv_input("Component ID: ", buf);
+    uint32_t component_id = 0;
+    recv_input("Component ID: ", buf, sizeof(buf));
     sscanf(buf, "%x", &component_id);
     attest_component(component_id);
     print_success("Attest\n");
@@ -539,7 +486,7 @@ void attempt_attest() {
 
 /*********************************** MAIN *************************************/
 
-int main() {
+int main(void) {
     // Initialize board
     init();
 
@@ -548,18 +495,18 @@ int main() {
     print_info("Application Processor Started\n");
 
     // Handle commands forever
-    char buf[100];
+    char buf[8] = {0};
     while (1) {
-        recv_input("Enter Command: ", buf);
+        recv_input("Enter Command: ", buf, sizeof(buf));
 
         // Execute requested command
-        if (!strcmp(buf, "list")) {
+        if (strcmp(buf, "list") == 0) {
             scan_components();
-        } else if (!strcmp(buf, "boot")) {
+        } else if (strcmp(buf, "boot") == 0) {
             attempt_boot();
-        } else if (!strcmp(buf, "replace")) {
+        } else if (strcmp(buf, "replace") == 0) {
             attempt_replace();
-        } else if (!strcmp(buf, "attest")) {
+        } else if (strcmp(buf, "attest") == 0) {
             attempt_attest();
         } else {
             print_error("Unrecognized command '%s'\n", buf);

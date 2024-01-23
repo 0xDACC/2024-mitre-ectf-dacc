@@ -124,7 +124,7 @@ int secure_receive(uint8_t *buffer) { return wait_and_receive_packet(buffer); }
 
 // Example boot sequence
 // Your design does not need to change this
-void boot() {
+void boot(void) {
 
 // POST BOOT FUNCTIONALITY
 // DO NOT REMOVE IN YOUR DESIGN
@@ -155,8 +155,8 @@ void boot() {
 }
 
 // Handle a transaction from the AP
-void component_process_cmd() {
-    command_message *command = (command_message *)receive_buffer;
+void component_process_cmd(void) {
+    const command_message *command = (command_message *)receive_buffer;
 
     // Output to application processor dependent on command received
     switch (command->opcode) {
@@ -178,7 +178,7 @@ void component_process_cmd() {
     }
 }
 
-void process_boot() {
+void process_boot(void) {
     // The AP requested a boot. Set `component_boot` for the main loop and
     // respond with the boot message
     uint8_t len = strlen(COMPONENT_BOOT_MSG) + 1;
@@ -188,27 +188,26 @@ void process_boot() {
     boot();
 }
 
-void process_scan() {
+void process_scan(void) {
     // The AP requested a scan. Respond with the Component ID
     scan_message *packet = (scan_message *)transmit_buffer;
     packet->component_id = COMPONENT_ID;
     send_packet_and_ack(sizeof(scan_message), transmit_buffer);
 }
 
-void process_validate() {
+void process_validate(void) {
     // The AP requested a validation. Respond with the Component ID
     validate_message *packet = (validate_message *)transmit_buffer;
     packet->component_id = COMPONENT_ID;
     send_packet_and_ack(sizeof(validate_message), transmit_buffer);
 }
 
-void process_attest() {
+void process_attest(void) {
     // The AP requested attestation. Respond with the attestation data
-    uint8_t len =
-        sprintf((char *)transmit_buffer, "LOC>%s\nDATE>%s\nCUST>%s\n",
-                ATTESTATION_LOC, ATTESTATION_DATE, ATTESTATION_CUSTOMER) +
-        1;
-    send_packet_and_ack(len, transmit_buffer);
+    int len = sprintf((char *)transmit_buffer, "LOC>%s\nDATE>%s\nCUST>%s\n",
+                      ATTESTATION_LOC, ATTESTATION_DATE, ATTESTATION_CUSTOMER) +
+              1;
+    send_packet_and_ack((uint8_t)len, transmit_buffer);
 }
 
 /*********************************** MAIN *************************************/

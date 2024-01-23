@@ -50,12 +50,11 @@ i2c_addr_t component_id_to_i2c_addr(uint32_t component_id) {
  */
 void send_packet_and_ack(uint8_t len, uint8_t *packet) {
     I2C_REGS[TRANSMIT_LEN][0] = len;
-    memcpy((void *)I2C_REGS[TRANSMIT], (void *)packet, len);
+    memcpy((volatile void *)I2C_REGS[TRANSMIT], (void *)packet, len);
     I2C_REGS[TRANSMIT_DONE][0] = false;
 
-    // Wait for ack from AP
-    while (!I2C_REGS[TRANSMIT_DONE][0])
-        ;
+    while (I2C_REGS[TRANSMIT_DONE][0] == 0) { // Wait for ack from AP
+    }
     I2C_REGS[RECEIVE_DONE][0] = false;
 }
 
@@ -69,11 +68,11 @@ void send_packet_and_ack(uint8_t len, uint8_t *packet) {
  * packet
  */
 uint8_t wait_and_receive_packet(uint8_t *packet) {
-    while (!I2C_REGS[RECEIVE_DONE][0])
-        ;
+    while (I2C_REGS[RECEIVE_DONE][0] == 0) { // Wait for new message
+    }
 
     uint8_t len = I2C_REGS[RECEIVE_LEN][0];
-    memcpy(packet, (void *)I2C_REGS[RECEIVE], len);
+    memcpy(packet, (volatile void *)I2C_REGS[RECEIVE], len);
 
     return len;
 }

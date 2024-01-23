@@ -247,7 +247,7 @@ int i2c_simple_read_status_generic(i2c_addr_t addr, ECTF_I2C_REGS reg) {
     request.tx_len = 1;
     request.tx_buf = (uint8_t *)&reg;
     request.rx_len = 1;
-    request.rx_buf = (uint8_t *)&value;
+    request.rx_buf =  &value;
     request.restart = 0;
     request.callback = NULL;
 

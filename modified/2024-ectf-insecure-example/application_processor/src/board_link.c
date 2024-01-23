@@ -50,8 +50,7 @@ i2c_addr_t component_id_to_i2c_addr(uint32_t component_id) {
  */
 int send_packet(i2c_addr_t address, uint8_t len, uint8_t *packet) {
 
-    int result;
-    result = i2c_simple_write_receive_len(address, len);
+    int result = i2c_simple_write_receive_len(address, len);
     if (result < SUCCESS_RETURN) {
         return ERROR_RETURN;
     }
@@ -88,11 +87,12 @@ int poll_and_receive_packet(i2c_addr_t address, uint8_t *packet) {
         MXC_Delay(50);
     }
 
-    uint8_t len = i2c_simple_read_transmit_len(address);
+    int len = i2c_simple_read_transmit_len(address);
     if (len < SUCCESS_RETURN) {
         return ERROR_RETURN;
     }
-    result = i2c_simple_read_data_generic(address, TRANSMIT, len, packet);
+    result =
+        i2c_simple_read_data_generic(address, TRANSMIT, (uint8_t)len, packet);
     if (result < SUCCESS_RETURN) {
         return ERROR_RETURN;
     }
