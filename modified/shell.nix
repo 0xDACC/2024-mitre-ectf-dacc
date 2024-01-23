@@ -1,6 +1,4 @@
-{ pkgs ? import <nixpkgs> {}
-  , fetchgit ? pkgs.fetchgit
-}:
+{ pkgs ? import <nixpkgs> { }, fetchgit ? pkgs.fetchgit }:
 
 pkgs.mkShell {
   buildInputs = [
@@ -9,7 +7,7 @@ pkgs.mkShell {
     pkgs.gcc-arm-embedded
     pkgs.poetry
     pkgs.cacert
-    #(pkgs.callPackage analog_openocd.nix { })
+    (pkgs.callPackage analog_openocd.nix { })
     pkgs.minicom
   ];
 
@@ -17,10 +15,9 @@ pkgs.mkShell {
     url = "https://github.com/Analog-Devices-MSDK/msdk.git";
     ref = "refs/tags/v2023_06";
   };
-  shellHook =
-    ''
-      cp -r $msdk $PWD/msdk
-      chmod -R u+rwX,go+rX,go-w $PWD/msdk
-      export MAXIM_PATH=$PWD/msdk
-    '';
+  shellHook = ''
+    cp -r $msdk $PWD/msdk
+    chmod -R u+rwX,go+rX,go-w $PWD/msdk
+    export MAXIM_PATH=$PWD/msdk
+  '';
 }

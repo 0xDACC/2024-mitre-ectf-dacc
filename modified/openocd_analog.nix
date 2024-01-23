@@ -1,22 +1,5 @@
-nix
-{ stdenv
-, lib
-, pkg-config
-, hidapi
-, jimtcl
-, libjaylink
-, libusb1
-, libgpiod
-, gcc
-, gnumake
-, coreutils
-, autoconf
-, automake
-, texinfo
-, git
-, libtool
-, which
-, libftdi1
+{ stdenv, lib, pkg-config, hidapi, jimtcl, libjaylink, libusb1, libgpiod, gcc
+, gnumake, coreutils, autoconf, automake, texinfo, git, libtool, which, libftdi1
 }:
 
 stdenv.mkDerivation {
@@ -60,7 +43,7 @@ stdenv.mkDerivation {
     ./configure --prefix=$out --disable-werror
   '';
 
-   meta = with lib; {
+  meta = with lib; {
     description = "OpenOCD fork for Analog Devices microcontrollers";
     longDescription = ''
       This is a fork of OpenOCD by ADI,

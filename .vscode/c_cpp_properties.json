@@ -8,7 +8,7 @@
             "defines": [],
             "compilerPath": "/usr/bin/arm-none-eabi-gcc",
             "intelliSenseMode": "linux-gcc-arm",
-            "compileCommands": "${workspaceFolder}/modified/2024-ectf-insecure-example/compile_commands.json",
+            "compileCommands": "${workspaceFolder}/modified/compile_commands.json",
             "compilerArgs": [
                 "-Wall",
                 "-Werror"

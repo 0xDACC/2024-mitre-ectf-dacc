@@ -1,5 +1,5 @@
 {
-    "sonarlint.pathToCompileCommands": "${workspaceFolder}/modified/2024-ectf-insecure-example/compile_commands.json",
+    "sonarlint.pathToCompileCommands": "${workspaceFolder}/modified/compile_commands.json",
     "files.associations": {
         "diff": "diff",
         "*.cl": "opencl",

@@ -15,6 +15,7 @@ This repo will host all of our code for the 2024 Mitre eCTF competition.
 - Removed feature "⏮️"
 - Fixed bug "🐛"
 - Formatting "🖌️"
+- Moving code "🚚"
 
 ### Example commit messages
 
@@ -22,6 +23,7 @@ This repo will host all of our code for the 2024 Mitre eCTF competition.
 - ⏮️ Removed insecure access method
 - 🐛 Patched password bypass
 - 🖌️ Formatted main.cpp
+- 🚚 Reorganized project
 
 #### Project structure
 
