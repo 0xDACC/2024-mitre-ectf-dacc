@@ -6,7 +6,7 @@
 - [ ] Must take <3s
 - [ ] Completed All Objectives
 
-## Attest
+## Attest (Henry + David)
 
 - [ ] Attestion PIN - 6 byte integer
 - [ ] Store Attestation PIN as SHA256 hash of PIN with however many iterations takes 2s to limit brute force
@@ -14,7 +14,7 @@
 - [ ] Must take <3s
 - [ ] Completed All Objectives
 
-## Replace
+## Replace (Ezquiel + Cam)
 
 - [ ] Replacement token - 16 byte integer
 - [ ] Store replacement token as SHA256 hash
@@ -23,7 +23,7 @@
 - [ ] Verify signature
 - [ ] Completed All Objectives
 
-## Boot
+## Boot (Tyler)
 
 - [ ] Store predefined ECC public key 1 on AP and generate a random number [RNG Example](https://github.com/Analog-Devices-MSDK/msdk/tree/e20c2cfe54f3d8880d29c11390700840e7e7ba27/Examples/MAX78000/TRNG)
 - [ ] Ask for Component1 to sign random number
@@ -40,7 +40,7 @@
 - [ ] If any of the above do not check out the integrity has been compromised
 - [ ] Completed All Objectives
 
-## Secure Send & Receive
+## Secure Send & Receive (Andrew)
 
 - [ ] ECDHE Encryption Scheme
 - [ ] Encrypt all packets with AES-128-CTR mode
@@ -51,6 +51,7 @@
 - [ ] Append an HMAC to end of all other packets before encrypting
 - [ ] Completed All Objectives
 
-## Secure Boot?
+## Secure Boot? (Andrew will investigate)
 
 - [ ] Only execute code signed by us
+- [ ] Disable DAPLink/Debug interface
