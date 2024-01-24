@@ -9,7 +9,7 @@
 ## Attest
 
 - [ ] Attestion PIN - 6 byte integer
-- [ ] Store Attestation PIN as SHA256 hash of PIN with however many iterations takes 1.25s to limit brute force
+- [ ] Store Attestation PIN as SHA256 hash of PIN with however many iterations takes 2s to limit brute force
 - [ ] Store Attestation Data AES-128-CTR mode encrypted with 0x0000 ++ PIN as IV and SHA256 has of PIN with however many iterations minus 1 as key
 - [ ] Must take <3s
 - [ ] Completed All Objectives
