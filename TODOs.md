@@ -50,3 +50,7 @@
 - [ ] Negotiate HMAC key over encrypted channel
 - [ ] Append an HMAC to end of all other packets before encrypting
 - [ ] Completed All Objectives
+
+## Secure Boot?
+
+- [ ] Only execute code signed by us
