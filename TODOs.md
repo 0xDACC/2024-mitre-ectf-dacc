@@ -55,3 +55,4 @@
 
 - [ ] Only execute code signed by us
 - [ ] Disable DAPLink/Debug interface
+- [ ] Override Debug_init
