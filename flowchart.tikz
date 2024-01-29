@@ -1,0 +1,13 @@
+\begin{tikzpicture}
+	\begin{pgfonlayer}{nodelayer}
+		\node [style=component] (2) at (-2, 0) {C1};
+		\node [style=ap] (3) at (0, 0) {AP};
+		\node [style=component] (4) at (2, 0) {C2};
+	\end{pgfonlayer}
+	\begin{pgfonlayer}{edgelayer}
+		\draw [style=right, bend right=90, looseness=0.25] (2) to (3);
+		\draw [style=left, in=90, out=90, looseness=0.25] (2) to (3);
+		\draw [style=left, bend left=105, looseness=0.25] (3) to (4);
+		\draw [style=right, bend right=90, looseness=0.25] (3) to (4);
+	\end{pgfonlayer}
+\end{tikzpicture}

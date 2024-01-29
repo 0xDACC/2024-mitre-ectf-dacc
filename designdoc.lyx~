@@ -5,6 +5,10 @@
 \save_transient_properties true
 \origin unavailable
 \textclass article
+\begin_preamble
+\usepackage{tikz}
+\usetikzlibrary{shapes, arrows}
+\end_preamble
 \use_default_options true
 \maintain_unincluded_children false
 \language english
@@ -28,7 +32,8 @@
 \output_sync 0
 \bibtex_command default
 \index_command default
-\paperfontsize default
+\paperfontsize 12
+\spacing single
 \use_hyperref false
 \papersize default
 \use_geometry false
@@ -44,6 +49,7 @@
 \use_package undertilde 1
 \cite_engine basic
 \cite_engine_type default
+\biblio_style plain
 \use_bibtopic false
 \use_indices false
 \paperorientation portrait
@@ -75,62 +81,58 @@
 
 \begin_body
 
-\begin_layout Standard
-\align center
+\begin_layout Title
 0xDACC
-\end_layout
+\begin_inset Newline newline
+\end_inset
 
-\begin_layout Standard
-\align center
 2024 Design Document
-\end_layout
+\begin_inset Newline newline
+\end_inset
 
-\begin_layout Standard
-\align center
 Secure MISC
 \end_layout
 
 \begin_layout Standard
-\noindent
+\align center
 \begin_inset Newpage newpage
 \end_inset
 
 
 \end_layout
 
-\begin_layout Standard
+\begin_layout Section
 \noindent
-\align center
 
 \series bold
 Proposed Attest Changes
 \end_layout
 
-\begin_layout Standard
+\begin_layout Paragraph
 \noindent
-Store attestation PIN as a hash with enough rounds that it takes approximately
- 2 seconds.
+Store attestation PIN as a hash with enough rounds that it takes approximately2
+ seconds.
 \end_layout
 
-\begin_layout Standard
+\begin_layout Subparagraph
 - Limits brute force attempts
 \end_layout
 
-\begin_layout Standard
+\begin_layout Subparagraph
 - Makes PIN unable to be extracted from flash
 \end_layout
 
-\begin_layout Standard
+\begin_layout Paragraph
 \noindent
 Store attestation data encrypted with symmetric key as 1 round less of attestati
-on pin hash 
+on pin hash
 \end_layout
 
-\begin_layout Standard
+\begin_layout Subparagraph
 - Also limits brute force and makes PIN unreadable from flash
 \end_layout
 
-\begin_layout Standard
+\begin_layout Paragraph
 \noindent
 Altogether these changes will help meet SR3 and SR4
 \end_layout
@@ -143,49 +145,44 @@ Altogether these changes will help meet SR3 and SR4
 
 \end_layout
 
-\begin_layout Standard
+\begin_layout Section
 \noindent
-\align center
 
 \series bold
 Proposed Replace Changes
 \end_layout
 
-\begin_layout Standard
+\begin_layout Paragraph
 \noindent
 Store replacement token as a hash
 \end_layout
 
-\begin_layout Standard
+\begin_layout Subparagraph
 - Makes token unable to be extracted from flash
 \end_layout
 
-\begin_layout Standard
+\begin_layout Paragraph
 \noindent
 Verify component authenticity
 \end_layout
 
-\begin_layout Standard
-1.
- Store an asymmetric public key in flash
+\begin_layout Subparagraph
+1.Store an asymmetric public key in flash
 \end_layout
 
-\begin_layout Standard
-2.
- Generate a random number using onboard TRNG
+\begin_layout Subparagraph
+2.Generate a random number using onboard TRNG
 \end_layout
 
-\begin_layout Standard
-3.
- Ask new component to sign random number
+\begin_layout Subparagraph
+3.Ask new component to sign random number
 \end_layout
 
-\begin_layout Standard
-4.
- Verify using onboard public key
+\begin_layout Subparagraph
+4.Verify using onboard public key
 \end_layout
 
-\begin_layout Standard
+\begin_layout Paragraph
 \noindent
 Altogether these changes will help meet SR1 and SR2
 \end_layout
@@ -197,124 +194,233 @@ Altogether these changes will help meet SR1 and SR2
 
 \end_layout
 
-\begin_layout Standard
-\align center
+\begin_layout Section
 
 \series bold
 Proposed Boot Changes
 \end_layout
 
-\begin_layout Standard
+\begin_layout Paragraph
 \noindent
 Verify integrity of all 3 boards
 \end_layout
 
-\begin_layout Standard
+\begin_layout Subparagraph*
 - Store public keys A and D on AP
 \end_layout
 
-\begin_layout Standard
+\begin_layout Subparagraph*
 - Store public key B on Component1
 \end_layout
 
-\begin_layout Standard
+\begin_layout Subparagraph*
 - Store public key C on Component2
 \end_layout
 
-\begin_layout Standard
-1.
- AP generates a random number and asks Component1 to sign
-\end_layout
+\begin_layout Subparagraph*
+\begin_inset Preview
 
 \begin_layout Standard
-2.
- AP verifies signature
+\begin_inset ERT
+status open
+
+\begin_layout Plain Layout
+
+
+\backslash
+begin{tikzpicture}
 \end_layout
 
-\begin_layout Standard
-3.
- Component1 generates a random number and asks AP to sign
+\begin_layout Plain Layout
+
+
+\backslash
+tikzstyle{ap}=[rectangle, draw, text centered, rounded corners, minimum
+ height=2em, minimum width=4em, fill={rgb,255: red,128; green,0; blue,128}]
 \end_layout
 
-\begin_layout Standard
-4.
- Component1 verifies signature
+\begin_layout Plain Layout
+
+
+\backslash
+tikzstyle{component}=[rectangle, draw, text centered, rounded corners, minimum
+ height=2em, minimum width=4em,fill=blue]
 \end_layout
 
-\begin_layout Standard
-5.
- Component2 generates a random number and asks AP to sign
+\begin_layout Plain Layout
+
+
+\backslash
+tikzstyle{line}=[<->]
 \end_layout
 
-\begin_layout Standard
-6.
- Component2 verifies signature
+\begin_layout Plain Layout
+
+
+\backslash
+tikzstyle{right}=[->]
 \end_layout
 
-\begin_layout Standard
-7.
- AP generates a random number and asks Component2 to sign
+\begin_layout Plain Layout
+
+
+\backslash
+tikzstyle{left}=[<-]
 \end_layout
 
-\begin_layout Standard
-8.
- AP verifies signature
+\begin_layout Plain Layout
+
+
+\backslash
+node [style=component] (c1) at (-2, 0) {C1};
 \end_layout
 
-\begin_layout Standard
+\begin_layout Plain Layout
+
+
+\backslash
+node [style=ap] (ap) at (0, 0) {AP};
+\end_layout
+
+\begin_layout Plain Layout
+
+
+\backslash
+node [style=component] (c2) at (2, 0) {C2};
+\end_layout
+
+\begin_layout Plain Layout
+
+
+\backslash
+draw [style=right, bend right=90, looseness=0.5] (c1) to (ap);
+\end_layout
+
+\begin_layout Plain Layout
+
+
+\backslash
+draw [style=left, in=90, out=90, looseness=0.5] (c1) to (ap);
+\end_layout
+
+\begin_layout Plain Layout
+
+
+\backslash
+draw [style=left, bend left=90, looseness=0.5] (ap) to (c2);
+\end_layout
+
+\begin_layout Plain Layout
+
+
+\backslash
+draw [style=right, bend right=90, looseness=0.5] (ap) to (c2);
+\end_layout
+
+\begin_layout Plain Layout
+
+
+\backslash
+end{tikzpicture}
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Verbatim
+1.AP generates a random number and asks Component1 to sign
+\end_layout
+
+\begin_layout Verbatim
+2.AP verifies signature
+\end_layout
+
+\begin_layout Verbatim
+3.Component1 generates a random number and asks AP to sign
+\end_layout
+
+\begin_layout Verbatim
+4.Component1 verifies signature
+\end_layout
+
+\begin_layout Verbatim
+5.Component2 generates a random number and asks AP to sign
+\end_layout
+
+\begin_layout Verbatim
+6.Component2 verifies signature
+\end_layout
+
+\begin_layout Verbatim
+7.AP generates a random number and asks Component2 to sign
+\end_layout
+
+\begin_layout Verbatim
+8.AP verifies signature
+\end_layout
+
+\begin_layout Paragraph
 
 \emph on
 If any signatures are invalid, stop immediately and shut down.
 \end_layout
 
-\begin_layout Standard
+\begin_layout Paragraph
 \noindent
-\align left
 Altogether these changes will help meet SR1 and SR2.
 \end_layout
 
 \begin_layout Standard
-\align center
 \begin_inset Newpage newpage
 \end_inset
 
 
-\series bold
-Proposed Secure TX & RX Changes
 \end_layout
 
-\begin_layout Standard
+\begin_layout Section
+
+\series bold
+Proposed Secure TX Changes
+\end_layout
+
+\begin_layout Paragraph
 \noindent
 Public KEX
 \end_layout
 
-\begin_layout Standard
+\begin_layout Subparagraph
 - Generate private key using RNG
 \end_layout
 
-\begin_layout Standard
-- Create an encrypted channel even though unnessecary.
+\begin_layout Subparagraph
+- Create an encrypted channel even though unnecessary.
 \end_layout
 
-\begin_layout Standard
+\begin_layout Subparagraph
 - Confidentiality will be provided to make RE'ing just a tiny bit harder
 \end_layout
 
-\begin_layout Standard
+\begin_layout Subparagraph
 - Encrypt packets with negotiated key
 \end_layout
 
-\begin_layout Standard
+\begin_layout Subparagraph
 - Negotiate HMAC key over new channel
 \end_layout
 
-\begin_layout Standard
+\begin_layout Subparagraph
 - Append HMAC to all packets before encrypting
 \end_layout
 
-\begin_layout Standard
+\begin_layout Paragraph
 \noindent
-\align left
 Altogether these changes will help meet SR5.
 \end_layout
 
@@ -325,37 +431,36 @@ Altogether these changes will help meet SR5.
 
 \end_layout
 
-\begin_layout Standard
+\begin_layout Section
 \noindent
-\align center
 
 \series bold
 Other
 \end_layout
 
-\begin_layout Standard
+\begin_layout Paragraph
 \noindent
 Secure DAPLink firmware for RISC-V chip
 \end_layout
 
-\begin_layout Standard
+\begin_layout Subparagraph
 - Only execute signed code
 \end_layout
 
-\begin_layout Standard
+\begin_layout Subparagraph
 - Disable the DAPLINK flashing utility
 \end_layout
 
-\begin_layout Standard
+\begin_layout Subparagraph
 - Disable code debugging
 \end_layout
 
-\begin_layout Standard
+\begin_layout Paragraph
 \noindent
-All of the above objectives are futile if the attacker can simply modify
- the flash or just set a breakpoint where the validation happens.
- By not allowing the chip to be debugged (easily) and only allowing signed
- code to be run, security becomes a lot more reasonable.
+All of the above objectives are futile if the attacker can simply modifythe
+ flash or just set a breakpoint where the validation happens.By not allowing
+ the chip to be debugged (easily) and only allowing signedcode to be run,
+ security becomes a lot more reasonable.
 \end_layout
 
 \end_body

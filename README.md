@@ -28,7 +28,10 @@ This repo will host all of our code for the 2024 Mitre eCTF competition.
 #### Project structure
 
 ```tree
-├── orig (hosts original Mitre provided code)
-├── modified (hosts modified code)
+├── orig (original Mitre provided code)
+├── modified (modified code)
+├── docs (documentation)
+├── .clang-format
+├── TODOs.md
 └── .gitignore
 ```
