@@ -51,8 +51,9 @@
 - [ ] Append an HMAC to end of all other packets before encrypting
 - [ ] Completed All Objectives
 
-## Secure Boot? (Andrew will investigate)
+## Secure Boot (Andrew)
 
 - [ ] Only execute code signed by us
-- [ ] Disable DAPLink/Debug interface
-- [ ] Override Debug_init
+- [ ] Disable DebugMonitor interrupt on M4 AND RISC-V core
+- [ ] Replace Reset Interrupt on M4 to:
+  - [ ] Launch RISC-V core

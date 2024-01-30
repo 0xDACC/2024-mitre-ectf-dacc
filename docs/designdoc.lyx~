@@ -1,0 +1,1999 @@
+#LyX 2.3 created this file. For more info see http://www.lyx.org/
+\lyxformat 544
+\begin_document
+\begin_header
+\save_transient_properties true
+\origin unavailable
+\textclass article
+\begin_preamble
+\usepackage{tikz}
+\usepackage{circuitikz}
+\usetikzlibrary{shapes, arrows}
+\end_preamble
+\use_default_options true
+\maintain_unincluded_children false
+\language english
+\language_package default
+\inputencoding auto
+\fontencoding global
+\font_roman "default" "default"
+\font_sans "default" "default"
+\font_typewriter "default" "default"
+\font_math "auto" "auto"
+\font_default_family default
+\use_non_tex_fonts false
+\font_sc false
+\font_osf false
+\font_sf_scale 100 100
+\font_tt_scale 100 100
+\use_microtype false
+\use_dash_ligatures true
+\graphics default
+\default_output_format default
+\output_sync 0
+\bibtex_command default
+\index_command default
+\paperfontsize 12
+\spacing single
+\use_hyperref false
+\papersize default
+\use_geometry false
+\use_package amsmath 1
+\use_package amssymb 1
+\use_package cancel 1
+\use_package esint 1
+\use_package mathdots 1
+\use_package mathtools 1
+\use_package mhchem 1
+\use_package stackrel 1
+\use_package stmaryrd 1
+\use_package undertilde 1
+\cite_engine basic
+\cite_engine_type default
+\biblio_style plain
+\use_bibtopic false
+\use_indices false
+\paperorientation portrait
+\suppress_date false
+\justification true
+\use_refstyle 1
+\use_minted 0
+\index Index
+\shortcut idx
+\color #008000
+\end_index
+\secnumdepth 3
+\tocdepth 3
+\paragraph_separation indent
+\paragraph_indentation default
+\is_math_indent 0
+\math_numbering_side default
+\quotes_style english
+\dynamic_quotes 0
+\papercolumns 1
+\papersides 1
+\paperpagestyle default
+\tracking_changes false
+\output_changes false
+\html_math_output 0
+\html_css_as_file 0
+\html_be_strict false
+\end_header
+
+\begin_body
+
+\begin_layout Title
+
+\series bold
+2024 Design Document
+\series default
+
+\begin_inset Newline newline
+\end_inset
+
+
+\emph on
+Secure MISC
+\end_layout
+
+\begin_layout Author
+0xDACC
+\end_layout
+
+\begin_layout Standard
+\align center
+\begin_inset Newpage newpage
+\end_inset
+
+
+\end_layout
+
+\begin_layout Section
+\noindent
+
+\series bold
+Proposed Attest Changes
+\end_layout
+
+\begin_layout Paragraph
+\noindent
+Store attestation PIN as a hash with enough rounds that it takes approximately
+ 2 seconds.
+\end_layout
+
+\begin_layout Itemize
+Limits brute force attempts
+\end_layout
+
+\begin_layout Itemize
+Makes raw PIN unable to be extracted from flash
+\end_layout
+
+\begin_layout Paragraph
+\noindent
+Store attestation data encrypted with symmetric key as 1 round less of attestati
+on pin hash
+\end_layout
+
+\begin_layout Itemize
+Also limits brute force and makes PIN unreadable from flash
+\end_layout
+
+\begin_layout Paragraph
+\noindent
+Meets SR3 and SR4
+\end_layout
+
+\begin_layout Standard
+\noindent
+\begin_inset Newpage newpage
+\end_inset
+
+
+\end_layout
+
+\begin_layout Section
+\noindent
+
+\series bold
+Proposed Replace Changes
+\end_layout
+
+\begin_layout Paragraph
+\noindent
+Store replacement token as a hash
+\end_layout
+
+\begin_layout Itemize
+Makes token unable to be extracted from flash
+\end_layout
+
+\begin_layout Itemize
+Highly unlikely that the token can be brute forced
+\end_layout
+
+\begin_layout Paragraph
+\noindent
+Verify component authenticity
+\end_layout
+
+\begin_layout Enumerate
+Store an asymmetric public key in flash
+\end_layout
+
+\begin_layout Enumerate
+Generate a random number using onboard TRNG
+\end_layout
+
+\begin_layout Enumerate
+Ask new component to sign random number
+\end_layout
+
+\begin_layout Enumerate
+Verify using onboard public key
+\end_layout
+
+\begin_layout Paragraph
+\noindent
+Meets SR3
+\end_layout
+
+\begin_layout Standard
+\begin_inset Newpage newpage
+\end_inset
+
+
+\end_layout
+
+\begin_layout Section
+
+\series bold
+Proposed Boot Changes
+\end_layout
+
+\begin_layout Paragraph
+\noindent
+Verify integrity of all 3 boards
+\end_layout
+
+\begin_layout Itemize
+Store public keys A and D and private keys B and C on AP
+\end_layout
+
+\begin_layout Itemize
+Store public key B and private key A on Component1
+\end_layout
+
+\begin_layout Itemize
+Store public key C and private key D on Component2
+\end_layout
+
+\begin_layout Standard
+\noindent
+\align center
+\begin_inset Preview
+
+\begin_layout Standard
+\noindent
+\align center
+\begin_inset ERT
+status open
+
+\begin_layout Plain Layout
+
+
+\backslash
+begin{figure}[!ht]
+\end_layout
+
+\begin_layout Plain Layout
+
+
+\backslash
+centering
+\end_layout
+
+\begin_layout Plain Layout
+
+
+\backslash
+resizebox{1
+\backslash
+textwidth}{!}{%
+\end_layout
+
+\begin_layout Plain Layout
+
+
+\backslash
+begin{circuitikz}
+\end_layout
+
+\begin_layout Plain Layout
+
+
+\backslash
+tikzstyle{every node}=[font=
+\backslash
+LARGE]
+\end_layout
+
+\begin_layout Plain Layout
+
+
+\backslash
+draw [rounded corners = 3.0] (25,24.5) rectangle  node {
+\backslash
+LARGE C2} (22.5,25.75);
+\end_layout
+
+\begin_layout Plain Layout
+
+
+\backslash
+draw [rounded corners = 3.0] (18.75,25.75) rectangle  node {
+\backslash
+LARGE AP} (21.25,24.5);
+\end_layout
+
+\begin_layout Plain Layout
+
+
+\backslash
+draw [rounded corners = 3.0] (15,25.75) rectangle  node {
+\backslash
+LARGE C1} (17.5,24.5);
+\end_layout
+
+\begin_layout Plain Layout
+
+
+\backslash
+draw [<-, >=Stealth, dashed] (17.5,25.5) -- (18.75,25.5);
+\end_layout
+
+\begin_layout Plain Layout
+
+
+\backslash
+draw [<-, >=Stealth, dashed] (18.75,24.75) -- (17.5,24.75);
+\end_layout
+
+\begin_layout Plain Layout
+
+
+\backslash
+draw [<-, >=Stealth, dashed] (21.25,25.5) ..
+ controls (22,25.5) and (22,25.5) ..
+ (22.5,25.5);
+\end_layout
+
+\begin_layout Plain Layout
+
+
+\backslash
+draw [<-, >=Stealth, dashed] (22.5,24.75) -- (21.25,24.75);
+\end_layout
+
+\begin_layout Plain Layout
+
+
+\backslash
+node [font=
+\backslash
+LARGE] at (18.25,26.25) {1};
+\end_layout
+
+\begin_layout Plain Layout
+
+
+\backslash
+node [font=
+\backslash
+LARGE] at (18.25,24) {2};
+\end_layout
+
+\begin_layout Plain Layout
+
+
+\backslash
+node [font=
+\backslash
+LARGE] at (21.75,26.25) {3};
+\end_layout
+
+\begin_layout Plain Layout
+
+
+\backslash
+node [font=
+\backslash
+LARGE] at (21.75,24) {4};
+\end_layout
+
+\begin_layout Plain Layout
+
+
+\backslash
+end{circuitikz}
+\end_layout
+
+\begin_layout Plain Layout
+
+}%
+\end_layout
+
+\begin_layout Plain Layout
+
+
+\backslash
+label{fig:my_label} 
+\backslash
+end{figure}
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Enumerate
+AP verifies Component1
+\end_layout
+
+\begin_deeper
+\begin_layout Enumerate
+AP generates a random number and asks Component1 to sign with key A
+\end_layout
+
+\begin_layout Enumerate
+AP verifies signature using key A
+\end_layout
+
+\end_deeper
+\begin_layout Enumerate
+Component1 verifies AP
+\end_layout
+
+\begin_deeper
+\begin_layout Enumerate
+Component1 generates a random number and asks AP to sign with key B
+\end_layout
+
+\begin_layout Enumerate
+Component1 verifies signature using key B
+\end_layout
+
+\end_deeper
+\begin_layout Enumerate
+Component2 verifies AP
+\end_layout
+
+\begin_deeper
+\begin_layout Enumerate
+Component2 generates a random number and asks AP to sign with key C
+\end_layout
+
+\begin_layout Enumerate
+Component2 verifies signature using key C
+\end_layout
+
+\end_deeper
+\begin_layout Enumerate
+AP verifies Component2
+\end_layout
+
+\begin_deeper
+\begin_layout Enumerate
+AP generates a random number and asks Component2 to sign with key D
+\end_layout
+
+\begin_layout Enumerate
+AP verifies signature using key D
+\end_layout
+
+\end_deeper
+\begin_layout Paragraph
+
+\emph on
+If any signatures are invalid, stop immediately and shut down.
+\end_layout
+
+\begin_layout Standard
+\begin_inset Preview
+
+\begin_layout Standard
+\begin_inset ERT
+status open
+
+\begin_layout Plain Layout
+
+
+\backslash
+begin{figure}[!ht]
+\end_layout
+
+\begin_layout Plain Layout
+
+
+\backslash
+centering
+\end_layout
+
+\begin_layout Plain Layout
+
+
+\backslash
+resizebox{1
+\backslash
+textwidth}{!}{%
+\end_layout
+
+\begin_layout Plain Layout
+
+
+\backslash
+begin{circuitikz}
+\end_layout
+
+\begin_layout Plain Layout
+
+
+\backslash
+tikzstyle{every node}=[font=
+\backslash
+LARGE]
+\end_layout
+
+\begin_layout Plain Layout
+
+
+\backslash
+draw [rounded corners = 3.0] (12.5,12) rectangle  node {
+\backslash
+large Boot Flow} (15,10.75);
+\end_layout
+
+\begin_layout Plain Layout
+
+
+\backslash
+draw [rounded corners = 3.0] (12.5,9.5) rectangle  node {
+\backslash
+tiny All systems valid?} (15,8.25);
+\end_layout
+
+\begin_layout Plain Layout
+
+
+\backslash
+draw [](13.75,10.75) to[short] (13.75,9.5);
+\end_layout
+
+\begin_layout Plain Layout
+
+
+\backslash
+draw [ color={rgb,255:red,224; green,27; blue,36}, short] (12.5,9) -- (10,9);
+\end_layout
+
+\begin_layout Plain Layout
+
+
+\backslash
+draw [ color={rgb,255:red,51; green,209; blue,122}, short] (15,9) -- (17.5,9);
+\end_layout
+
+\begin_layout Plain Layout
+
+
+\backslash
+draw [ color={rgb,255:red,51; green,209; blue,122}, short] (17.5,9) -- (17.5,7);
+\end_layout
+
+\begin_layout Plain Layout
+
+
+\backslash
+draw [ color={rgb,255:red,224; green,27; blue,36}, short] (10,9) -- (10,7);
+\end_layout
+
+\begin_layout Plain Layout
+
+
+\backslash
+node [font=
+\backslash
+tiny] at (11.25,8.5) {Send Fail Packet};
+\end_layout
+
+\begin_layout Plain Layout
+
+
+\backslash
+draw [ fill={rgb,255:red,224; green,27; blue,36} ] (10,6.25) circle (0.75cm)
+ node {
+\backslash
+Large Die} ;
+\end_layout
+
+\begin_layout Plain Layout
+
+
+\backslash
+node [font=
+\backslash
+tiny] at (16.25,8.5) {Send Boot to C1};
+\end_layout
+
+\begin_layout Plain Layout
+
+
+\backslash
+draw [ rounded corners = 3.0 ] (16.25,7) rectangle  node {
+\backslash
+tiny Valid ACK Received?} (18.75,5.75);
+\end_layout
+
+\begin_layout Plain Layout
+
+
+\backslash
+draw [ color={rgb,255:red,224; green,27; blue,36}, ] (16.25,6.5) to[short]
+ (10.5,6.5);
+\end_layout
+
+\begin_layout Plain Layout
+
+
+\backslash
+draw [ color={rgb,255:red,51; green,209; blue,122}, ](18.75,6.5) to[short]
+ (21.25,6.5);
+\end_layout
+
+\begin_layout Plain Layout
+
+
+\backslash
+draw [ color={rgb,255:red,51; green,209; blue,122}, ](21.25,6.5) to[short]
+ (21.25,4.5);
+\end_layout
+
+\begin_layout Plain Layout
+
+
+\backslash
+node [font=
+\backslash
+tiny] at (20,6) {Send Boot to C2};
+\end_layout
+
+\begin_layout Plain Layout
+
+
+\backslash
+draw [ rounded corners = 3.0 ] (20,4.5) rectangle  node {
+\backslash
+tiny Valid ACK Received?} (22.5,3.25);
+\end_layout
+
+\begin_layout Plain Layout
+
+
+\backslash
+draw [ color={rgb,255:red,224; green,27; blue,36}, short] (20,4) -- (10,4);
+\end_layout
+
+\begin_layout Plain Layout
+
+
+\backslash
+draw [ color={rgb,255:red,224; green,27; blue,36}, short] (10,4) -- (10,5.5);
+\end_layout
+
+\begin_layout Plain Layout
+
+
+\backslash
+draw [ color={rgb,255:red,51; green,209; blue,122}, short] (22.5,4) -- (25,4);
+\end_layout
+
+\begin_layout Plain Layout
+
+
+\backslash
+node [font=
+\backslash
+tiny] at (23.75,3.5) {Boot AP};
+\end_layout
+
+\begin_layout Plain Layout
+
+
+\backslash
+draw [ color={rgb,255:red,51; green,209; blue,122}, short] (25,4) -- (25,2);
+\end_layout
+
+\begin_layout Plain Layout
+
+
+\backslash
+draw [ fill={rgb,255:red,51; green,209; blue,122} ] (25,2) circle (0.75cm)
+ node {
+\backslash
+Large Boot} ;
+\end_layout
+
+\begin_layout Plain Layout
+
+
+\backslash
+end{circuitikz}
+\end_layout
+
+\begin_layout Plain Layout
+
+}%
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\begin_layout Plain Layout
+
+
+\backslash
+label{fig:my_label}
+\end_layout
+
+\begin_layout Plain Layout
+
+
+\backslash
+end{figure}
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+\noindent
+\begin_inset Float table
+placement H
+wide false
+sideways false
+status open
+
+\begin_layout Plain Layout
+\noindent
+\align center
+\begin_inset Tabular
+<lyxtabular version="3" rows="4" columns="5">
+<features tabularvalignment="middle">
+<column alignment="center" valignment="top" width="0pt">
+<column alignment="center" valignment="top" width="0pt">
+<column alignment="center" valignment="top">
+<column alignment="center" valignment="top">
+<column alignment="center" valignment="top" width="0pt">
+<row>
+<cell multicolumn="1" alignment="center" valignment="top" topline="true" bottomline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+Header
+\end_layout
+
+\end_inset
+</cell>
+<cell multicolumn="2" alignment="center" valignment="top" topline="true" bottomline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell multicolumn="1" alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+Payload
+\end_layout
+
+\end_inset
+</cell>
+<cell multicolumn="2" alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell multicolumn="2" alignment="center" valignment="top" topline="true" bottomline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+Packet Magic
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+Checksum
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+Length
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+Data
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+Signature
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+(1 byte)
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+(3 bytes)
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+(1 byte)
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+(4 bytes)
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+(65 bytes)
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell alignment="center" valignment="top" topline="true" bottomline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+0xBB
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" bottomline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" bottomline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+0x45
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" bottomline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+0x424F4F54
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" bottomline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+</row>
+</lyxtabular>
+
+\end_inset
+
+
+\begin_inset Caption Standard
+
+\begin_layout Plain Layout
+Component Boot Packet
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+\noindent
+\begin_inset Float table
+placement H
+wide false
+sideways false
+status open
+
+\begin_layout Plain Layout
+\align center
+\begin_inset Tabular
+<lyxtabular version="3" rows="4" columns="5">
+<features tabularvalignment="middle">
+<column alignment="center" valignment="top" width="0pt">
+<column alignment="center" valignment="top" width="0pt">
+<column alignment="center" valignment="top">
+<column alignment="center" valignment="top">
+<column alignment="center" valignment="top" width="0pt">
+<row>
+<cell multicolumn="1" alignment="center" valignment="top" topline="true" bottomline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+Header
+\end_layout
+
+\end_inset
+</cell>
+<cell multicolumn="2" alignment="center" valignment="top" topline="true" bottomline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell multicolumn="1" alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+Payload
+\end_layout
+
+\end_inset
+</cell>
+<cell multicolumn="2" alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell multicolumn="2" alignment="center" valignment="top" topline="true" bottomline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+Packet Magic
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+Checksum
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+Length
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+Data
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+Signature
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+(1 byte)
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+(3 bytes)
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+(1 byte)
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+(1 byte)
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+(65 bytes)
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell alignment="center" valignment="top" topline="true" bottomline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+0xAA
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" bottomline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" bottomline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+0x42
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" bottomline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+0xFF or 0x00
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" bottomline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+</row>
+</lyxtabular>
+
+\end_inset
+
+
+\begin_inset Caption Standard
+
+\begin_layout Plain Layout
+Startup ACK Packet
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Paragraph
+If:
+\end_layout
+
+\begin_layout Itemize
+Packet Magic != 0xBB or 0xAA
+\end_layout
+
+\begin_layout Itemize
+CSUM(Payload) != Expected Checksum
+\end_layout
+
+\begin_layout Itemize
+Length != 0x45
+\end_layout
+
+\begin_layout Itemize
+Data != 0x424F4F54
+\end_layout
+
+\begin_layout Itemize
+recover(signature) != key B or key C
+\end_layout
+
+\begin_layout Itemize
+Startup ACK data == 0xFF and recover(signature) == key A, key B, key C,
+ or key D
+\end_layout
+
+\begin_layout Standard
+
+\series bold
+\emph on
+Shut down immediately, send fail packet if running on component, and do
+ not continue operation.
+\end_layout
+
+\begin_layout Paragraph
+\noindent
+Meets SR1 and SR2
+\end_layout
+
+\begin_layout Standard
+\begin_inset Newpage newpage
+\end_inset
+
+
+\end_layout
+
+\begin_layout Section
+
+\series bold
+Proposed Secure TX Changes
+\end_layout
+
+\begin_layout Paragraph
+\noindent
+ECIES Based Scheme
+\end_layout
+
+\begin_layout Itemize
+Generate private key using RNG
+\end_layout
+
+\begin_layout Itemize
+Create an encrypted channel even though unnecessary.
+\end_layout
+
+\begin_layout Itemize
+Confidentiality will be provided to make RE'ing just a tiny bit harder
+\end_layout
+
+\begin_layout Itemize
+Encrypt packets with negotiated key
+\end_layout
+
+\begin_layout Itemize
+Negotiate HMAC key over new channel
+\end_layout
+
+\begin_layout Itemize
+Append HMAC to all packets before encrypting
+\end_layout
+
+\begin_layout Itemize
+Calculate checksum of encrypted data
+\end_layout
+
+\begin_layout Standard
+\noindent
+\begin_inset Float table
+placement H
+wide false
+sideways false
+status open
+
+\begin_layout Plain Layout
+\align center
+\begin_inset Tabular
+<lyxtabular version="3" rows="4" columns="7">
+<features tabularvalignment="middle">
+<column alignment="center" valignment="top" width="0pt">
+<column alignment="center" valignment="top" width="0pt">
+<column alignment="center" valignment="top" width="0pt">
+<column alignment="center" valignment="top">
+<column alignment="center" valignment="top">
+<column alignment="center" valignment="top">
+<column alignment="center" valignment="top" width="0pt">
+<row>
+<cell multicolumn="1" alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+HeaderEncrypted Payload
+\end_layout
+
+\end_inset
+</cell>
+<cell multicolumn="2" alignment="center" valignment="top" topline="true" bottomline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell multicolumn="2" alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell multicolumn="2" alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell multicolumn="2" alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell multicolumn="2" alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell multicolumn="2" alignment="center" valignment="top" topline="true" bottomline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+Packet Magic
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+Checksum
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+Payload Magic
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+Length
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+Nonce
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+Data
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+HMAC
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+(1 byte)
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+(3 bytes)
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+(1 byte)
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+(1 byte)
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+(6 bytes)
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+(255 bytes?)
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+(32 bytes)
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell alignment="center" valignment="top" topline="true" bottomline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+0xEE
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" bottomline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" bottomline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+0xDD
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" bottomline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" bottomline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" bottomline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" bottomline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+</row>
+</lyxtabular>
+
+\end_inset
+
+
+\begin_inset Caption Standard
+
+\begin_layout Plain Layout
+Encrypted I2C Packet
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+
+\begin_inset Float table
+placement H
+wide false
+sideways false
+status open
+
+\begin_layout Plain Layout
+\align center
+\begin_inset Tabular
+<lyxtabular version="3" rows="4" columns="5">
+<features tabularvalignment="middle">
+<column alignment="center" valignment="top">
+<column alignment="center" valignment="top">
+<column alignment="center" valignment="top" width="0pt">
+<column alignment="center" valignment="top" width="0pt">
+<column alignment="center" valignment="top">
+<row>
+<cell multicolumn="1" alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+Key Exchange
+\end_layout
+
+\end_inset
+</cell>
+<cell multicolumn="2" alignment="center" valignment="top" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell multicolumn="2" alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell multicolumn="2" alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell multicolumn="2" alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+Packet Magic
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+Checksum
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+Length
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+Key Material
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+Key Hash
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+(1 byte)
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+(3 bytes)
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+(1 byte)
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+(32 bytes)
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+(32 bytes)
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell alignment="center" valignment="top" topline="true" bottomline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+0x4A or 0x4B
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" bottomline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" bottomline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+0x40
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" bottomline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" bottomline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+</row>
+</lyxtabular>
+
+\end_inset
+
+
+\begin_inset Caption Standard
+
+\begin_layout Plain Layout
+Key Exchange I2C Packet
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Paragraph
+If:
+\end_layout
+
+\begin_layout Itemize
+Packet Magic != Expected Magic
+\end_layout
+
+\begin_layout Itemize
+CSUM(packet) != Expected Checksum
+\end_layout
+
+\begin_layout Itemize
+Payload Magic != Expected Magic
+\end_layout
+
+\begin_layout Itemize
+HMAC(Data) != HMAC or Hash(Key) != Key Hash
+\end_layout
+
+\begin_layout Itemize
+Nonce != Expected Nonce
+\end_layout
+
+\begin_layout Standard
+
+\series bold
+\emph on
+Shut down immediately, send fail packet, and do not continue operation.
+\end_layout
+
+\begin_layout Paragraph
+\noindent
+Meets SR5
+\end_layout
+
+\begin_layout Standard
+\begin_inset Newpage newpage
+\end_inset
+
+
+\end_layout
+
+\begin_layout Section
+\noindent
+
+\series bold
+Other
+\end_layout
+
+\begin_layout Paragraph
+\noindent
+Secure DAPLink firmware for RISC-V chip
+\end_layout
+
+\begin_layout Itemize
+Only execute signed code
+\end_layout
+
+\begin_layout Itemize
+Disable the DAPLINK flashing utility
+\end_layout
+
+\begin_layout Itemize
+Disable code debugging
+\end_layout
+
+\begin_layout Itemize
+Disable MAINTENANCE mode
+\end_layout
+
+\begin_layout Paragraph
+Secure key storage
+\end_layout
+
+\begin_layout Itemize
+All asymmetric and symmetric keys located on flash will be stored in an
+ encrypted state
+\end_layout
+
+\begin_layout Itemize
+Wrapper keys will be compile-time constants and XOR'ed with another compile-time
+ constant so the raw key will 
+\emph on
+NEVER
+\emph default
+ be stored in flash
+\end_layout
+
+\begin_layout Itemize
+By wrapping all keys, a flash dumper payload would not be able to extract
+ the real keys and static reverse engineering would have a similar outcome
+\end_layout
+
+\begin_layout Paragraph
+\noindent
+All of the above objectives are futile if the attacker can simply modify
+ the flash or just set a breakpoint where the validation happens.
+ By not allowing the chip to be debugged (easily) and only allowing signed
+ code to be run, security becomes a lot more reasonable.
+ After reading through the requirements, some of these 
+\begin_inset Quotes eld
+\end_inset
+
+secure boot
+\begin_inset Quotes erd
+\end_inset
+
+ steps may be unnecessary, so may or may not be implemented.
+\end_layout
+
+\begin_layout Standard
+\begin_inset Newpage newpage
+\end_inset
+
+
+\end_layout
+
+\begin_layout Section
+Summary
+\end_layout
+
+\begin_layout Subsection
+SR1 All components must be valid for AP to boot
+\end_layout
+
+\begin_layout Itemize
+Validate Component1 integrity through signing an arbitrary number
+\end_layout
+
+\begin_layout Itemize
+Validate Component2 integrity in same manner
+\end_layout
+
+\begin_layout Itemize
+Components then validate the AP to make sure all 3 systems are present and
+ valid
+\end_layout
+
+\begin_layout Itemize
+Boot the AP
+\end_layout
+
+\begin_layout Subsection
+SR2 All components must be validated by AP and commanded before booting
+\end_layout
+
+\begin_layout Itemize
+After a successful handshake, it can be assumed that all components are
+ valid
+\end_layout
+
+\begin_layout Itemize
+Send signed boot command to components from AP
+\end_layout
+
+\begin_layout Itemize
+Boot individual components
+\end_layout
+
+\begin_layout Subsection
+SR3 The Attestation PIN and Replacement Token should be kept confidential
+\end_layout
+
+\begin_layout Itemize
+PIN will be stored as a hash with enough iterations to reduce the brute
+ force likelihood
+\end_layout
+
+\begin_layout Itemize
+Replacement Token will also be stored as a hash
+\end_layout
+
+\begin_layout Subsection
+SR4 Component Attestation Data should be kept confidential
+\end_layout
+
+\begin_layout Itemize
+Attestation Data will be stored with symmteric encryption with the key being
+ derived from the Attestation PIN
+\end_layout
+
+\begin_layout Subsection
+SR5 Integrity and Authentication of all communications
+\end_layout
+
+\begin_layout Itemize
+All messages will follow a standard packet format with a negotiated HMAC
+ key and assymetric encryption
+\end_layout
+
+\begin_layout Itemize
+A nonce and ephermeral keys may be included to limit replay attacks
+\end_layout
+
+\end_body
+\end_document
