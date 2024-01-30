@@ -1,0 +1,341 @@
+%% LyX 2.3.7 created this file.  For more info, see http://www.lyx.org/.
+%% Do not edit unless you really know what you are doing.
+\documentclass[12pt,english]{article}
+\usepackage[T1]{fontenc}
+\usepackage[latin9]{inputenc}
+\usepackage{float}
+
+\makeatletter
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% LyX specific LaTeX commands.
+%% Because html converters don't know tabularnewline
+\providecommand{\tabularnewline}{\\}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% User specified LaTeX commands.
+\usepackage{tikz}
+\usepackage{circuitikz}
+\usetikzlibrary{shapes, arrows}
+
+\makeatother
+
+\usepackage{babel}
+\begin{document}
+\title{\textbf{2024 Design Document}\\
+\emph{Secure MISC}}
+\author{0xDACC}
+\maketitle
+\begin{center}
+\newpage{}
+\par\end{center}
+
+\section{Proposed Attest Changes}
+
+\paragraph{Store attestation PIN as a hash with enough rounds that it takes
+approximately 2 seconds.}
+\begin{itemize}
+\item Limits brute force attempts
+\item Makes raw PIN unable to be extracted from flash
+\end{itemize}
+
+\paragraph{Store attestation data encrypted with symmetric key as 1 round less
+of attestation pin hash}
+\begin{itemize}
+\item Also limits brute force and makes PIN unreadable from flash
+\end{itemize}
+
+\paragraph{Meets SR3 and SR4}
+
+\noindent \newpage{}
+
+\section{Proposed Replace Changes}
+
+\paragraph{Store replacement token as a hash}
+\begin{itemize}
+\item Makes token unable to be extracted from flash
+\item Highly unlikely that the token can be brute forced
+\end{itemize}
+
+\paragraph{Verify component authenticity}
+\begin{enumerate}
+\item Store an asymmetric public key in flash
+\item Generate a random number using onboard TRNG
+\item Ask new component to sign random number
+\item Verify using onboard public key
+\end{enumerate}
+
+\paragraph{Meets SR3}
+
+\newpage{}
+
+\section{Proposed Boot Changes}
+
+\paragraph{Verify integrity of all 3 boards}
+\begin{itemize}
+\item Store public keys A and D and private keys B and C on AP
+\item Store public key B and private key A on Component1
+\item Store public key C and private key D on Component2
+\end{itemize}
+\noindent \begin{center}
+\noindent \begin{center}
+\begin{figure}[!ht]
+\centering
+\resizebox{1\textwidth}{!}{%
+\begin{circuitikz}
+\tikzstyle{every node}=[font=\LARGE]
+\draw [rounded corners = 3.0] (25,24.5) rectangle  node {\LARGE C2} (22.5,25.75);
+\draw [rounded corners = 3.0] (18.75,25.75) rectangle  node {\LARGE AP} (21.25,24.5);
+\draw [rounded corners = 3.0] (15,25.75) rectangle  node {\LARGE C1} (17.5,24.5);
+\draw [<-, >=Stealth, dashed] (17.5,25.5) -- (18.75,25.5);
+\draw [<-, >=Stealth, dashed] (18.75,24.75) -- (17.5,24.75);
+\draw [<-, >=Stealth, dashed] (21.25,25.5) .. controls (22,25.5) and (22,25.5) .. (22.5,25.5);
+\draw [<-, >=Stealth, dashed] (22.5,24.75) -- (21.25,24.75);
+\node [font=\LARGE] at (18.25,26.25) {1};
+\node [font=\LARGE] at (18.25,24) {2};
+\node [font=\LARGE] at (21.75,26.25) {3};
+\node [font=\LARGE] at (21.75,24) {4};
+\end{circuitikz}
+}%
+\label{fig:my_label} \end{figure}
+\par\end{center}
+\par\end{center}
+\begin{enumerate}
+\item AP verifies Component1
+\begin{enumerate}
+\item AP generates a random number and asks Component1 to sign with key
+A
+\item AP verifies signature using key A
+\end{enumerate}
+\item Component1 verifies AP
+\begin{enumerate}
+\item Component1 generates a random number and asks AP to sign with key
+B
+\item Component1 verifies signature using key B
+\end{enumerate}
+\item Component2 verifies AP
+\begin{enumerate}
+\item Component2 generates a random number and asks AP to sign with key
+C
+\item Component2 verifies signature using key C
+\end{enumerate}
+\item AP verifies Component2
+\begin{enumerate}
+\item AP generates a random number and asks Component2 to sign with key
+D
+\item AP verifies signature using key D
+\end{enumerate}
+\end{enumerate}
+
+\paragraph{\emph{If any signatures are invalid, stop immediately and shut down.}}
+
+\begin{figure}[!ht]
+\centering
+\resizebox{1\textwidth}{!}{%
+\begin{circuitikz}
+\tikzstyle{every node}=[font=\LARGE]
+\draw [rounded corners = 3.0] (12.5,12) rectangle  node {\large Boot Flow} (15,10.75);
+\draw [rounded corners = 3.0] (12.5,9.5) rectangle  node {\tiny All systems valid?} (15,8.25);
+\draw [](13.75,10.75) to[short] (13.75,9.5);
+\draw [ color={rgb,255:red,224; green,27; blue,36}, short] (12.5,9) -- (10,9);
+\draw [ color={rgb,255:red,51; green,209; blue,122}, short] (15,9) -- (17.5,9);
+\draw [ color={rgb,255:red,51; green,209; blue,122}, short] (17.5,9) -- (17.5,7);
+\draw [ color={rgb,255:red,224; green,27; blue,36}, short] (10,9) -- (10,7);
+\node [font=\tiny] at (11.25,8.5) {Send Fail Packet};
+\draw [ fill={rgb,255:red,224; green,27; blue,36} ] (10,6.25) circle (0.75cm) node {\Large Die} ;
+\node [font=\tiny] at (16.25,8.5) {Send Boot to C1};
+\draw [ rounded corners = 3.0 ] (16.25,7) rectangle  node {\tiny Valid ACK Received?} (18.75,5.75);
+\draw [ color={rgb,255:red,224; green,27; blue,36}, ] (16.25,6.5) to[short] (10.5,6.5);
+\draw [ color={rgb,255:red,51; green,209; blue,122}, ](18.75,6.5) to[short] (21.25,6.5);
+\draw [ color={rgb,255:red,51; green,209; blue,122}, ](21.25,6.5) to[short] (21.25,4.5);
+\node [font=\tiny] at (20,6) {Send Boot to C2};
+\draw [ rounded corners = 3.0 ] (20,4.5) rectangle  node {\tiny Valid ACK Received?} (22.5,3.25);
+\draw [ color={rgb,255:red,224; green,27; blue,36}, short] (20,4) -- (10,4);
+\draw [ color={rgb,255:red,224; green,27; blue,36}, short] (10,4) -- (10,5.5);
+\draw [ color={rgb,255:red,51; green,209; blue,122}, short] (22.5,4) -- (25,4);
+\node [font=\tiny] at (23.75,3.5) {Boot AP};
+\draw [ color={rgb,255:red,51; green,209; blue,122}, short] (25,4) -- (25,2);
+\draw [ fill={rgb,255:red,51; green,209; blue,122} ] (25,2) circle (0.75cm) node {\Large Boot} ;
+\end{circuitikz}
+}%
+
+\label{fig:my_label}
+\end{figure}
+
+\noindent 
+\begin{table}[H]
+\noindent \centering{}%
+\begin{tabular}{|c|c|c|c|c|}
+\hline 
+\multicolumn{2}{|c|}{Header} & \multicolumn{3}{c|}{Payload}\tabularnewline
+\hline 
+Packet Magic & Checksum & Length & Data & Signature\tabularnewline
+\hline 
+(1 byte) & (3 bytes) & (1 byte) & (4 bytes) & (65 bytes)\tabularnewline
+\hline 
+0xBB &  & 0x45 & 0x424F4F54 & \tabularnewline
+\hline 
+\end{tabular}\caption{Component Boot Packet}
+\end{table}
+
+\noindent 
+\begin{table}[H]
+\centering{}%
+\begin{tabular}{|c|c|c|c|c|}
+\hline 
+\multicolumn{2}{|c|}{Header} & \multicolumn{3}{c|}{Payload}\tabularnewline
+\hline 
+Packet Magic & Checksum & Length & Data & Signature\tabularnewline
+\hline 
+(1 byte) & (3 bytes) & (1 byte) & (1 byte) & (65 bytes)\tabularnewline
+\hline 
+0xAA &  & 0x42 & 0xFF or 0x00 & \tabularnewline
+\hline 
+\end{tabular}\caption{Startup ACK Packet}
+\end{table}
+
+
+\paragraph{If:}
+\begin{itemize}
+\item Packet Magic != 0xBB or 0xAA
+\item CSUM(Payload) != Expected Checksum
+\item Length != 0x45
+\item Data != 0x424F4F54
+\item recover(signature) != key B or key C
+\item Startup ACK data == 0xFF and recover(signature) == key A, key B, key
+C, or key D
+\end{itemize}
+\textbf{\emph{Shut down immediately, send fail packet if running on
+component, and do not continue operation.}}
+
+\paragraph{Meets SR1 and SR2}
+
+\newpage{}
+
+\section{Proposed Secure TX Changes}
+
+\paragraph{ECIES Based Scheme}
+\begin{itemize}
+\item Generate private key using RNG
+\item Create an encrypted channel even though unnecessary.
+\item Confidentiality will be provided to make RE'ing just a tiny bit harder
+\item Encrypt packets with negotiated key
+\item Negotiate HMAC key over new channel
+\item Append HMAC to all packets before encrypting
+\item Calculate checksum of encrypted data
+\end{itemize}
+\noindent 
+\begin{table}[H]
+\centering{}%
+\begin{tabular}{|c|c|c|c|c|c|c|}
+\hline 
+\multicolumn{2}{|c|}{Header} & \multicolumn{5}{c|}{Encrypted Payload}\tabularnewline
+\hline 
+Packet Magic & Checksum & Payload Magic & Length & Nonce & Data & HMAC\tabularnewline
+\hline 
+(1 byte) & (3 bytes) & (1 byte) & (1 byte) & (6 bytes) & (255 bytes?) & (32 bytes)\tabularnewline
+\hline 
+0xEE &  & 0xDD &  &  &  & \tabularnewline
+\hline 
+\end{tabular}\caption{Encrypted I2C Packet}
+\end{table}
+\begin{table}[H]
+\centering{}%
+\begin{tabular}{|c|c|c|c|c|}
+\hline 
+\multicolumn{5}{|c|}{Key Exchange}\tabularnewline
+\hline 
+Packet Magic & Checksum & Length & Key Material & Key Hash\tabularnewline
+\hline 
+(1 byte) & (3 bytes) & (1 byte) & (32 bytes) & (32 bytes)\tabularnewline
+\hline 
+0x4A or 0x4B &  & 0x40 &  & \tabularnewline
+\hline 
+\end{tabular}\caption{Key Exchange I2C Packet}
+\end{table}
+
+
+\paragraph{If:}
+\begin{itemize}
+\item Packet Magic != Expected Magic
+\item CSUM(packet) != Expected Checksum
+\item Payload Magic != Expected Magic
+\item HMAC(Data) != HMAC or Hash(Key) != Key Hash
+\item Nonce != Expected Nonce
+\end{itemize}
+\textbf{\emph{Shut down immediately, send fail packet, and do not
+continue operation.}}
+
+\paragraph{Meets SR5}
+
+\newpage{}
+
+\section{Other}
+
+\paragraph{Secure DAPLink firmware for RISC-V chip}
+\begin{itemize}
+\item Only execute signed code
+\item Disable the DAPLINK flashing utility
+\item Disable code debugging
+\item Disable MAINTENANCE mode
+\end{itemize}
+
+\paragraph{Secure key storage}
+\begin{itemize}
+\item All asymmetric and symmetric keys located on flash will be stored
+in an encrypted state
+\item Wrapper keys will be compile-time constants and XOR'ed with another
+compile-time constant so the raw key will \emph{NEVER} be stored in
+flash
+\item By wrapping all keys, a flash dumper payload would not be able to
+extract the real keys and static reverse engineering would have a
+similar outcome
+\end{itemize}
+
+\paragraph{All of the above objectives are futile if the attacker can simply
+modify the flash or just set a breakpoint where the validation happens.
+By not allowing the chip to be debugged (easily) and only allowing
+signed code to be run, security becomes a lot more reasonable. After
+reading through the requirements, some of these ``secure boot''
+steps may be unnecessary, so may or may not be implemented.}
+
+\newpage{}
+
+\section{Summary}
+
+\subsection{SR1 All components must be valid for AP to boot}
+\begin{itemize}
+\item Validate Component1 integrity through signing an arbitrary number
+\item Validate Component2 integrity in same manner
+\item Components then validate the AP to make sure all 3 systems are present
+and valid
+\item Boot the AP
+\end{itemize}
+
+\subsection{SR2 All components must be validated by AP and commanded before booting}
+\begin{itemize}
+\item After a successful handshake, it can be assumed that all components
+are valid
+\item Send signed boot command to components from AP
+\item Boot individual components
+\end{itemize}
+
+\subsection{SR3 The Attestation PIN and Replacement Token should be kept confidential}
+\begin{itemize}
+\item PIN will be stored as a hash with enough iterations to reduce the
+brute force likelihood
+\item Replacement Token will also be stored as a hash
+\end{itemize}
+
+\subsection{SR4 Component Attestation Data should be kept confidential}
+\begin{itemize}
+\item Attestation Data will be stored with symmteric encryption with the
+key being derived from the Attestation PIN
+\end{itemize}
+
+\subsection{SR5 Integrity and Authentication of all communications}
+\begin{itemize}
+\item All messages will follow a standard packet format with a negotiated
+HMAC key and assymetric encryption
+\item A nonce and ephermeral keys may be included to limit replay attacks
+\end{itemize}
+
+\end{document}
