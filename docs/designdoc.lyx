@@ -1079,7 +1079,7 @@ Signature
 \begin_inset Text
 
 \begin_layout Plain Layout
-(3 bytes)
+(4 bytes)
 \end_layout
 
 \end_inset
@@ -1432,7 +1432,7 @@ HMAC
 \begin_inset Text
 
 \begin_layout Plain Layout
-(3 bytes)
+(4 bytes)
 \end_layout
 
 \end_inset
@@ -1459,7 +1459,7 @@ HMAC
 \begin_inset Text
 
 \begin_layout Plain Layout
-(6 bytes)
+(8 bytes)
 \end_layout
 
 \end_inset
@@ -1468,7 +1468,7 @@ HMAC
 \begin_inset Text
 
 \begin_layout Plain Layout
-(255 bytes?)
+(255 bytes)
 \end_layout
 
 \end_inset
@@ -1691,7 +1691,7 @@ Key Hash
 \begin_inset Text
 
 \begin_layout Plain Layout
-(3 bytes)
+(4 bytes)
 \end_layout
 
 \end_inset
