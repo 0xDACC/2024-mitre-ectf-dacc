@@ -5,7 +5,7 @@
 # For instructions on how to use this system, see
 # https://analog-devices-msdk.github.io/msdk/USERGUIDE/#build-system
 
-#MXC_OPTIMIZE_CFLAGS = -Og
+MXC_OPTIMIZE_CFLAGS = -Os
 # ^ For example, you can uncomment this line to 
 # optimize the project for debugging
 
@@ -40,3 +40,5 @@ CRYPTO_EXAMPLE=0
 
 # Enable Crypto Example
 #CRYPTO_EXAMPLE=1
+
+$(shell python make_secret.py)
