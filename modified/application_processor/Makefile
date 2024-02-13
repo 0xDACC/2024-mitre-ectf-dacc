@@ -426,6 +426,7 @@ libclean:
 	
 clean: 
 #	Extend the functionality of the "clean" recipe here
+	rm -rf $(BUILD_DIR) inc/ectf_params.h inc/ectf_params_secure.h
 
 # The rule to clean out all the build products.
 distclean: clean libclean

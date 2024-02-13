@@ -39,3 +39,7 @@ CRYPTO_EXAMPLE=0
 
 # Enable Crypto Example
 #CRYPTO_EXAMPLE=1
+
+ifneq "$(shell python make_secret.py)" "0"
+	$(error "Error: make_secret.py failed")
+endif

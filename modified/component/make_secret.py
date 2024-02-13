@@ -2,25 +2,51 @@ import secrets
 
 from cryptography.hazmat.backends import default_backend
 
-from cryptography.hazmat.primitives.asymmetric import ec
 from cryptography.hazmat.primitives.ciphers import Cipher
 from cryptography.hazmat.primitives.ciphers.algorithms import AES
 from cryptography.hazmat.primitives.ciphers.modes import CTR
-from cryptography.hazmat.primitives.serialization import Encoding, PublicFormat
 
 input_component = open("inc/ectf_params.h", "rt", encoding="utf-8")
-output = open("inc/global_secrets_secure.h", "wt", encoding="utf-8")
+output = open("inc/ectf_params_secure.h", "wt", encoding="utf-8")
+output.write("""
+#include <stdint.h>
+#pragma once
+""")
 
 
 def wrap_key(key: bytes, nonce: bytes, wrapper: bytes) -> bytes:
-    cipher = Cipher(AES(key), mode=CTR(nonce), backend=default_backend()).encryptor()
+    """Wrap a key with a wrapper key
+
+    Args:
+        key (bytes): Key to wrap
+        nonce (bytes): Nonce for the AES-CTR cipher
+        wrapper (bytes): Wrapper key
+
+    Returns:
+        bytes: Wrapped key
+    """
+    cipher = Cipher(AES(key), mode=CTR(nonce),
+                    backend=default_backend()).encryptor()
     return cipher.update(wrapper) + cipher.finalize()
 
 
 def encrypt_attestation(
     loc: str, date: str, cust: str, nonce: bytes, key: bytes
 ) -> tuple[bytes, bytes, bytes]:
-    cipher = Cipher(AES(key), mode=CTR(nonce), backend=default_backend()).encryptor()
+    """Encrypt the attestation parameters
+
+    Args:
+        loc (str): Attestation location
+        date (str): Attestation date
+        cust (str): Attestation customer
+        nonce (bytes): Nonce for the AES-CTR cipher
+        key (bytes): Key for the AES-CTR cipher
+
+    Returns:
+        tuple[bytes, bytes, bytes]: Encrypted attestation parameters
+    """
+    cipher = Cipher(AES(key), mode=CTR(nonce),
+                    backend=default_backend()).encryptor()
     return (
         cipher.update(loc.encode()),
         cipher.update(date.encode()),
@@ -29,8 +55,16 @@ def encrypt_attestation(
 
 
 def write(type: str, name: str, values: list[str]) -> None:
+    """Write a constant to the ectf_params.h file
+
+    Args:
+        type (str): Type of the constant
+        name (str): Variable name
+        values (list[str]): Value of the constant
+    """
     if "[" in type and "]" in type:
-        output.write(f"constexpr const {type.split('[')[0]} {name}[{len(values)}] = {{")
+        output.write(
+            f"constexpr const {type.split('[')[0]} {name}[{len(values)}] = {{")
         for value in values:
             output.write(f"{value},")
         output.write("};\n")
@@ -39,10 +73,18 @@ def write(type: str, name: str, values: list[str]) -> None:
 
 
 def parse_component_attestation() -> tuple[str, str, str]:
-    lines = input_component.readlines()
-    attest_loc = ""
-    attest_date = ""
-    attest_cust = ""
+    """Parse the component parameters from the ectf_params.h file
+
+    Raises:
+        ValueError: If any of the attestation parameters are missing
+
+    Returns:
+        tuple[str, str, str]:  The attestation parameters
+    """
+    lines: list[str] = input_component.readlines()
+    attest_loc: str = ""
+    attest_date: str = ""
+    attest_cust: str = ""
     for line in lines:
         if "ATTESTATION_LOC" in line:
             attest_loc = line.split(" ")[2].strip(' \n"')
@@ -71,6 +113,14 @@ attest_loc, attest_date, attest_cust = encrypt_attestation(
     attest_nonce,
     attest_key,
 )
+
+write("uint8_t[]", "ATTEST_KEY", [f"{b}" for b in attest_key])
+write("uint8_t[]", "ATTEST_NONCE", [f"{b}" for b in attest_nonce])
+write("uint8_t[]", "ATTEST_LOC_ENC", [f"{b}" for b in attest_loc])
+write("uint8_t[]", "ATTEST_DATE_ENC", [f"{b}" for b in attest_date])
+write("uint8_t[]", "ATTEST_CUST_ENC", [f"{b}" for b in attest_cust])
+
+
 attest_loc = attest_loc.hex()
 attest_date = attest_date.hex()
 attest_cust = attest_cust.hex()
@@ -80,5 +130,5 @@ print(
     f"Attestation Params:\n{attest_key=}\n{attest_nonce=}\n{attest_loc=}\n{attest_date=}\n{attest_cust=}\n"
 )
 
-# write("int", "pin", [str(random.randint(1000, 9999))])
-# write("int[]", "attest_keypair", [str(random.randint(1000, 9999)), str(random.randint(1000, 9999))])
+input_component.close()
+output.close()
