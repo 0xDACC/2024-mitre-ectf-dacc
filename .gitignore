@@ -4,3 +4,4 @@
 **/msdk
 **/ectf_params*.h
 **/global_secrets*.h
+**/compile_commands.json
