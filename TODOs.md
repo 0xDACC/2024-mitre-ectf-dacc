@@ -10,7 +10,8 @@
 
 - [ ] Attestion PIN - 6 byte integer
 - [ ] Store Attestation PIN as SHA256 hash of PIN with however many iterations takes 2s to limit brute force
-- [ ] Store Attestation Data AES-128-CTR mode encrypted with 0x0000 ++ PIN as IV and SHA256 has of PIN with however many iterations minus 1 as key
+- [ ] Wrap Attestation Data Key with 0x0000 ++ PIN as IV and SHA256 hash of PIN with however many iterations minus 1 as key
+- [ ] Store Attestation Data AES-128-CTR mode encrypted with random IV and SHA256 has of PIN with however many iterations minus 1 as key
 - [ ] Must take <3s
 - [ ] Completed All Objectives
 
@@ -50,10 +51,3 @@
 - [ ] Negotiate HMAC key over encrypted channel
 - [ ] Append an HMAC to end of all other packets before encrypting
 - [ ] Completed All Objectives
-
-## Secure Boot (Andrew)
-
-- [ ] Only execute code signed by us
-- [ ] Disable DebugMonitor interrupt on M4 AND RISC-V core
-- [ ] Replace Reset Interrupt on M4 to:
-  - [ ] Launch RISC-V core
