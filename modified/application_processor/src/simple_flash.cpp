@@ -1,15 +1,12 @@
 /**
- * @file "simple_flash.c"
- * @author Frederich Stine
- * @brief Simple Flash Interface Implementation
- * @date 2024
- *
- * This source file is part of an example system for MITRE's 2024 Embedded
- * System CTF (eCTF). This code is being provided only for educational purposes
- * for the 2024 MITRE eCTF competition, and may not meet MITRE standards for
- * quality. Use this code at your own risk!
- *
- * @copyright Copyright (c) 2024 The MITRE Corporation
+ * @file simple_flash.cpp
+ * @author Andrew Langan (alangan444@icloud.com)
+ * @brief Safer simple flash interface
+ * @version 0.1
+ * @date 2024-02-01
+ * 
+ * @copyright Copyright (c) 2024
+ * 
  */
 
 #include "simple_flash.h"
@@ -27,12 +24,12 @@
  *
  * This ISR allows for access to the flash through simple_flash to operate
  */
-void flash_simple_irq(void) {
+void FLC0_IRQHandler(void) {
     uint32_t temp;
     temp = MXC_FLC0->intr;
-
     if (temp & MXC_F_FLC_INTR_DONE) {
         MXC_FLC0->intr &= ~MXC_F_FLC_INTR_DONE;
+        printf(" -> Interrupt! (Flash operation done)\n\n");
     }
 
     if (temp & MXC_F_FLC_INTR_AF) {
@@ -49,10 +46,9 @@ void flash_simple_irq(void) {
  */
 void flash_simple_init(void) {
     // Setup Flash
-    MXC_NVIC_SetVector(FLC0_IRQn, flash_simple_irq);
+    MXC_NVIC_SetVector(FLC0_IRQn, FLC0_IRQHandler);
     NVIC_EnableIRQ(FLC0_IRQn);
     MXC_FLC_EnableInt(MXC_F_FLC_INTR_DONEIE | MXC_F_FLC_INTR_AFIE);
-    MXC_ICC_Disable(MXC_ICC0);
 }
 
 /**
@@ -68,7 +64,13 @@ void flash_simple_init(void) {
  * In order to be re-written the entire page must be erased.
  */
 int flash_simple_erase_page(uint32_t address) {
-    return MXC_FLC_PageErase(address);
+    int ret;
+    MXC_ICC_Disable(MXC_ICC0);
+    MXC_SYS_Crit_Enter();
+    ret = MXC_FLC_PageErase(address);
+    MXC_SYS_Crit_Exit();
+    MXC_ICC_Enable(MXC_ICC0);
+    return ret;
 }
 
 /**
@@ -82,7 +84,11 @@ int flash_simple_erase_page(uint32_t address) {
  * with the specified amount of bytes
  */
 void flash_simple_read(uint32_t address, uint32_t *buffer, uint32_t size) {
+    MXC_ICC_Disable(MXC_ICC0);
+    MXC_SYS_Crit_Enter();
     MXC_FLC_Read(address, buffer, size);
+    MXC_SYS_Crit_Exit();
+    MXC_ICC_Enable(MXC_ICC0);
 }
 
 /**
@@ -100,5 +106,11 @@ void flash_simple_read(uint32_t address, uint32_t *buffer, uint32_t size) {
  * flash_simple_erase_page documentation.
  */
 int flash_simple_write(uint32_t address, uint32_t *buffer, uint32_t size) {
-    return MXC_FLC_Write(address, size, buffer);
+    int ret;
+    MXC_ICC_Disable(MXC_ICC0);
+    MXC_SYS_Crit_Enter();
+    ret = MXC_FLC_Write(address, size, buffer);
+    MXC_SYS_Crit_Exit();
+    MXC_ICC_Enable(MXC_ICC0);
+    return ret;
 }

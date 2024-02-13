@@ -36,7 +36,6 @@
 #include <string.h>
 #endif
 
-/********************************* CONSTANTS **********************************/
 
 // Passed in through ectf-params.h
 // Example of format of ectf-params.h shown here
@@ -48,8 +47,6 @@
 #define ATTESTATION_CUSTOMER "Fritz"
 */
 
-/******************************** TYPE DEFINITIONS
- * ********************************/
 // Commands received by Component using 32 bit integer
 typedef enum {
     COMPONENT_CMD_NONE,
@@ -59,8 +56,6 @@ typedef enum {
     COMPONENT_CMD_ATTEST
 } component_cmd_t;
 
-/******************************** TYPE DEFINITIONS
- * ********************************/
 // Data structure for receiving messages from the AP
 typedef struct {
     uint8_t opcode;
@@ -75,8 +70,6 @@ typedef struct {
     uint32_t component_id;
 } scan_message;
 
-/********************************* FUNCTION DECLARATIONS
- * **********************************/
 // Core function definitions
 void component_process_cmd(void);
 void process_boot(void);
@@ -84,14 +77,10 @@ void process_scan(void);
 void process_validate(void);
 void process_attest(void);
 
-/********************************* GLOBAL VARIABLES
- * **********************************/
 // Global varaibles
 uint8_t receive_buffer[MAX_I2C_MESSAGE_LEN];
 uint8_t transmit_buffer[MAX_I2C_MESSAGE_LEN];
 
-/******************************* POST BOOT FUNCTIONALITY
- * *********************************/
 /**
  * @brief Secure Send
  *
@@ -119,8 +108,6 @@ void secure_send(uint8_t *buffer, uint8_t len) {
  */
 int secure_receive(uint8_t *buffer) { return wait_and_receive_packet(buffer); }
 
-/******************************* FUNCTION DEFINITIONS
- * *********************************/
 
 // Example boot sequence
 // Your design does not need to change this
@@ -210,7 +197,6 @@ void process_attest(void) {
     send_packet_and_ack((uint8_t)len, transmit_buffer);
 }
 
-/*********************************** MAIN *************************************/
 
 int main(void) {
     printf("Component Started\n");

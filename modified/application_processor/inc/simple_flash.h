@@ -17,6 +17,10 @@
 
 #include <stdint.h>
 
+#if __cplusplus
+extern "C" {
+#endif
+
 /**
  * @brief Initialize the Simple Flash Interface
  *
@@ -64,4 +68,7 @@ void flash_simple_read(uint32_t address, uint32_t *buffer, uint32_t size);
  */
 int flash_simple_write(uint32_t address, uint32_t *buffer, uint32_t size);
 
+#if __cplusplus
+}
+#endif
 #endif
