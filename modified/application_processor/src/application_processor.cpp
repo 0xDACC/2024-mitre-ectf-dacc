@@ -276,7 +276,7 @@ error_t boot_components(void) {
         }
 
         // Print boot message from component
-        print_info("0x%x>%s\n", flash_status.component_ids[i], receive_buffer);
+        print_info("0x%08x>%s\n", flash_status.component_ids[i], receive_buffer);
     }
     return error_t::SUCCESS;
 }
