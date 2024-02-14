@@ -29,7 +29,7 @@ argparse = "^1.4.0"
 loguru = "^0.7.2"
 gdbgui = "^0.15.2.0"
 tqdm = "^4.66.1"
-compiledb = "^0.10.1
+compiledb = "^0.10.1"
 
 [build-system]
 requires = ["poetry-core"]
