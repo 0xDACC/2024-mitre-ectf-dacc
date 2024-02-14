@@ -2,6 +2,9 @@
 **/flash.log
 **/.cache
 **/msdk
-**/ectf_params*.h
-**/global_secrets*.h
+**/ectf_params.h
+**/ectf_params_secure.h
+**/global_secrets.h
+**/global_secrets_secure.h
 **/compile_commands.json
+**/__pycache__

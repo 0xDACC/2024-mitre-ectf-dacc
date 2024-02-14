@@ -1,5 +1,0 @@
-#ifndef GLOBAL_SECRETS
-#define GLOBAL_SECRETS
-#define SECRET 1234
-
-#endif /* GLOBAL_SECRETS */
