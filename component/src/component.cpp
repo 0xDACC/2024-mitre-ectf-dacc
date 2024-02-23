@@ -56,14 +56,16 @@ using namespace i2c;
  */
 static void secure_send(const uint8_t *const buffer, const uint8_t len) {
     // TODO: Andrew, implement secure_send
-    packet_t<packet_type_t::SECURE> packet;
-    packet.header.magic = packet_magic_t::ENCRYPTED;
-    packet.header.checksum = 0;
+    packet_t<packet_type_t::SECURE> tx_packet;
+    tx_packet.header.magic = packet_magic_t::ENCRYPTED;
+    tx_packet.header.checksum = 0;
 
-    const auto response = send_i2c_slave_tx<packet_type_t::SECURE>(packet);
+    const packet_t<packet_type_t::SECURE> rx_packet =
+        send_i2c_slave_tx<packet_type_t::SECURE, packet_type_t::SECURE>(
+            tx_packet);
 
-    if (response.header.magic != packet_magic_t::ENCRYPTED) {
-    } else if (response.type == packet_type_t::ERROR) {
+    if (rx_packet.header.magic != packet_magic_t::ENCRYPTED) {
+    } else if (rx_packet.type == packet_type_t::ERROR) {
     } else {
     }
 }
@@ -79,19 +81,19 @@ static void secure_send(const uint8_t *const buffer, const uint8_t len) {
  * with the security requirements.
  */
 static int secure_receive(const uint8_t *const buffer) {
-    // TODO: Andrew, implement secure_receive
-    packet_t<packet_type_t::SECURE> packet;
-    packet.header.magic = packet_magic_t::ENCRYPTED;
-    packet.header.checksum = 0;
+    // TODO: Andrew, implement secure_send
+    packet_t<packet_type_t::SECURE> tx_packet;
+    tx_packet.header.magic = packet_magic_t::ENCRYPTED;
+    tx_packet.header.checksum = 0;
 
-    const auto response = send_i2c_slave_tx<packet_type_t::SECURE>(packet);
+    const packet_t<packet_type_t::SECURE> rx_packet =
+        send_i2c_slave_tx<packet_type_t::SECURE, packet_type_t::SECURE>(
+            tx_packet);
 
-    if (response.header.magic != packet_magic_t::ENCRYPTED) {
+    if (rx_packet.header.magic != packet_magic_t::ENCRYPTED) {
         return -1;
-
-    } else if (response.type == packet_type_t::ERROR) {
+    } else if (rx_packet.type == packet_type_t::ERROR) {
         return -1;
-
     } else {
         return 0;
     }

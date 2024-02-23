@@ -13,6 +13,8 @@
 #define SIMPLE_I2C_PERIPHERAL
 
 #include "errors.h"
+#include "i2c.h"
+#include "mxc.h"
 #include "packets.h"
 #include <stdint.h>
 
@@ -35,16 +37,15 @@ using success_cb_t = void (*)();
 mitre_error_t i2c_simple_peripheral_init(uint8_t addr, i2c_cb_t cb);
 
 /**
- * @brief Perform an I2C Transaction
+ * @brief I2C Slave Handler
  *
- * @tparam R Expected packet type
- * @tparam T Packet type to send
- * @param addr I2C Address
- * @param packet Packet to send
- * @return packet_t<R> Received packet
+ * @param i2c I2C interface
+ * @param event Event
+ * @param data Data
+ * @return int Whether ot ACK or NACK
  */
-template <packet_type_t R, packet_type_t T>
-packet_t<R> send_i2c_slave_tx(packet_t<T> packet);
+int I2C_SlaveHandler(mxc_i2c_regs_t *const i2c,
+                     const mxc_i2c_slave_event_t event, void *const data);
 
 /**
  * @brief Convert 4-byte component ID to I2C address
@@ -74,7 +75,7 @@ class I2C_Handler {
      */
     template <packet_type_t R> packet_t<R> get_packet() {
         packet_t<R> packet;
-        packet.header.magic = rxbuf[0];
+        packet.header.magic = static_cast<packet_magic_t>(rxbuf[0]);
         packet.header.checksum = *reinterpret_cast<uint32_t *>(&rxbuf[1]);
         memcpy(&packet.payload, &rxbuf[5], sizeof(payload_t<R>));
         return packet;
@@ -97,8 +98,9 @@ class I2C_Handler {
      */
     template <packet_type_t T> void send_packet(packet_t<T> packet) {
         txbuf[0] = static_cast<uint8_t>(packet.header.magic);
-        *reinterpret_cast<uint32_t *>(&txbuf[1]) = packet.header.checksum;
-        *reinterpret_cast<payload_t<T> *>(&txbuf[5]) = packet.payload;
+
+        memcpy(&txbuf[1], &packet.header.checksum, 0x04);
+        memcpy(&txbuf[5], &packet.payload, sizeof(payload_t<T>));
         txsize = sizeof(packet_t<T>);
         rxsize = bufsize; // max size
     }
@@ -243,6 +245,29 @@ uint8_t *i2c_slave_raw_tx(uint8_t *buffer, uint32_t *len);
  */
 extern I2C_Handler *handler;
 
+/**
+ * @brief Perform an I2C Transaction
+ *
+ * @tparam R Expected packet type
+ * @tparam T Packet type to send
+ * @param addr I2C Address
+ * @param packet Packet to send
+ * @return packet_t<R> Received packet
+ */
+template <packet_type_t R, packet_type_t T>
+packet_t<R> send_i2c_slave_tx(packet_t<T> packet) {
+    handler->clear();
+    handler->send_packet<T>(packet);
+    I2C_FLAG = 1;
+
+    if (MXC_I2C_SlaveTransaction(MXC_I2C1, I2C_SlaveHandler) == E_NO_ERROR) {
+        return handler->get_packet<R>();
+    } else {
+        packet_t<R> error;
+        error.header.magic = packet_magic_t::ERROR;
+        return error;
+    }
+}
 } // namespace i2c
 
 #endif /* SIMPLE_I2C_PERIPHERAL */

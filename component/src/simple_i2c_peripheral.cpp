@@ -37,9 +37,8 @@ mitre_error_t i2c_simple_peripheral_init(const uint8_t addr,
     return mitre_error_t::SUCCESS;
 }
 
-static int I2C_SlaveHandler(mxc_i2c_regs_t *const i2c,
-                            const mxc_i2c_slave_event_t event,
-                            void *const data) {
+int I2C_SlaveHandler(mxc_i2c_regs_t *const i2c,
+                     const mxc_i2c_slave_event_t event, void *const data) {
     uint8_t buf[8] = {};
     uint32_t len = 0;
 
@@ -95,20 +94,6 @@ static int I2C_SlaveHandler(mxc_i2c_regs_t *const i2c,
     }
 
     return 0;
-}
-template <packet_type_t R, packet_type_t T>
-packet_t<R> send_i2c_slave_tx(packet_t<T> packet) {
-    handler->clear();
-    handler->send_packet<T>(packet);
-    I2C_FLAG = 1;
-
-    if (MXC_I2C_SlaveTransaction(MXC_I2C1, I2C_SlaveHandler) == E_NO_ERROR) {
-        return handler->get_packet<R>();
-    } else {
-        packet_t<R> error;
-        error.header.magic = packet_magic_t::ERROR;
-        return error;
-    }
 }
 
 static uint8_t *i2c_slave_raw_tx(const uint8_t *const buffer,
