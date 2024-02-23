@@ -1,5 +1,5 @@
 {
-    "sonarlint.pathToCompileCommands": "${workspaceFolder}/modified/compile_commands.json",
+    "sonarlint.pathToCompileCommands": "${workspaceFolder}/compile_commands.json",
     "files.associations": {
         "diff": "diff",
         "*.cl": "opencl",
