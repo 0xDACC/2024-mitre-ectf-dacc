@@ -185,7 +185,7 @@ static mitre_error_t list_components() {
         // TODO: Andrew, add checksum
         tx_packet.header.checksum = 0;
         tx_packet.payload.len = 0x00;
-        packet_t<packet_type_t::LIST_ACK> rx_packet =
+        const packet_t<packet_type_t::LIST_ACK> rx_packet =
             send_i2c_master_tx<packet_type_t::LIST_ACK,
                                packet_type_t::LIST_COMMAND>(addr, tx_packet);
         if (rx_packet.header.magic != packet_magic_t::LIST_ACK) {
@@ -199,8 +199,9 @@ static mitre_error_t list_components() {
             // Invalid payload length
             continue;
         }
-        const uint32_t component_id =
-            *reinterpret_cast<uint32_t *>(rx_packet.payload.data);
+
+        uint32_t component_id = 0;
+        memcpy(&component_id, rx_packet.payload.data, 0x04);
         print_info("F>0x%08lx\n", component_id);
     }
     print_success("List\n");
