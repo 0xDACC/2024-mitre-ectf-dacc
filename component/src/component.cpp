@@ -208,8 +208,8 @@ static void process_list(const uint8_t *const data, const uint32_t len) {
 
     packet_t<packet_type_t::LIST_COMMAND> rx_packet;
     rx_packet.header.magic = packet_magic_t::LIST;
-    rx_packet.header.checksum = *reinterpret_cast<const uint32_t *>(&data[1]);
 
+    memcpy(&rx_packet.header.checksum, &data[1], 0x04);
     memcpy(&rx_packet.payload, &data[5], len - 5);
 
     if (rx_packet.header.checksum != 0) {
@@ -285,7 +285,7 @@ static void process_attest(const uint8_t *const data, const uint32_t len) {
     handler->set_success_callback(nullptr);
 }
 
-int main(void) {
+int main() {
     printf("Component Started\n");
 
     // Enable Global Interrupts
@@ -301,7 +301,8 @@ int main(void) {
 
     LED_On(LED2);
 
-    while (1) {
+    while (true) {
+        MXC_I2C_SlaveTransaction(MXC_I2C1, I2C_SlaveHandler);
         switch (I2C_FLAG) {
         case E_NO_ERROR:
             printf("I2C Success\n");
