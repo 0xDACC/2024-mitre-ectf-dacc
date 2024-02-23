@@ -26,7 +26,8 @@ def wrap_key(key: bytes, nonce: bytes, wrapper: bytes) -> bytes:
     Returns:
         bytes: Wrapped key
     """
-    cipher = Cipher(AES(key), mode=CTR(nonce), backend=default_backend()).encryptor()
+    cipher = Cipher(AES(key), mode=CTR(nonce),
+                    backend=default_backend()).encryptor()
     return cipher.update(wrapper) + cipher.finalize()
 
 
@@ -69,7 +70,8 @@ def write(type: str, name: str, values: list[str]) -> None:
         values (list[str]): Value of the constant
     """
     if "[" in type and "]" in type:
-        output.write(f"constexpr const {type.split('[')[0]} {name}[{len(values)}] = {{")
+        output.write(
+            f"constexpr const {type.split('[')[0]} {name}[{len(values)}] = {{")
         for value in values:
             output.write(f"{value},")
         output.write("};\n")
@@ -93,7 +95,7 @@ def parse_ap_params() -> tuple[int, int, list[str], str]:
     boot_msg: str = ""
     for line in lines:
         if "AP_PIN" in line:
-            attest_pin = int(line.split(" ")[2].strip(' \n"'))
+            attest_pin = int(line.split(" ")[2].strip(' \n"'), 16)
         elif "AP_TOKEN" in line:
             replacement_token = int(line.split(" ")[2].strip(' \n"'), 16)
         elif "COMPONENT_IDS" in line:
