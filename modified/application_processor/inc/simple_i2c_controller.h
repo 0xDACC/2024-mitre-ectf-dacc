@@ -9,10 +9,11 @@
  *
  */
 
-#ifndef __SIMPLE_I2C_CONTROLLER__
-#define __SIMPLE_I2C_CONTROLLER__
+#ifndef SIMPLE_I2C_CONTROLLER
+#define SIMPLE_I2C_CONTROLLER
 
 #include "errors.h"
+#include "mxc.h"
 #include "packets.h"
 #include "stdint.h"
 
@@ -26,7 +27,7 @@ using i2c_addr_t = uint8_t;
  * @brief Initialize the I2C Connection
  *
  */
-error_t i2c_simple_controller_init();
+mitre_error_t i2c_simple_controller_init();
 
 /**
  * @brief Perform an I2C Transaction
@@ -38,7 +39,44 @@ error_t i2c_simple_controller_init();
  * @return packet_t<R> Received packet
  */
 template <packet_type_t R, packet_type_t T>
-packet_t<R> send_i2c_tx(const i2c_addr_t addr, packet_t<T> packet);
+packet_t<R> send_i2c_master_tx(const i2c_addr_t addr, packet_t<T> packet) {
+    uint8_t *const in = reinterpret_cast<uint8_t *>(&packet);
+    uint8_t rxbuf[299] = {};
+    packet_t<R> rx_packet = {};
+
+    mxc_i2c_req_t request;
+    request.i2c = MXC_I2C1;
+    request.addr = addr;
+    request.tx_len = sizeof(packet_t<T>);
+    request.tx_buf = in;
+    request.rx_len = sizeof(packet_t<R>);
+    request.rx_buf = rxbuf;
+    request.restart = 0;
+    request.callback = nullptr;
+
+    if (MXC_I2C_MasterTransaction(&request) == E_NO_ERROR) {
+        rx_packet.header.magic = static_cast<packet_magic_t>(rxbuf[0]);
+        rx_packet.header.checksum = *reinterpret_cast<uint32_t *>(&rxbuf[1]);
+        memcpy(&rx_packet.payload, &rxbuf[5], sizeof(payload_t<R>));
+        return rx_packet;
+    } else {
+        packet_t<R> error;
+        error.header.magic = packet_magic_t::ERROR;
+        return error;
+    }
+}
+
+/**
+ * @brief Convert 4-byte component ID to I2C address
+ *
+ * @param component_id component_id to convert
+ *
+ * @return i2c_addr_t, i2c address
+ */
+constexpr i2c_addr_t component_id_to_i2c_addr(const uint32_t component_id) {
+    return component_id & 0xFF;
+}
+
 } // namespace i2c
 
-#endif
+#endif /* SIMPLE_I2C_CONTROLLER */

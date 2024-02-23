@@ -1,15 +1,12 @@
 /**
- * @file application_processor.c
- * @author Jacob Doll
- * @brief eCTF AP Example Design Implementation
- * @date 2024
+ * @file application_processor.cpp
+ * @author Andrew Langan (alangan444@icloud.com)
+ * @brief Application Processor Implementation
+ * @version 0.1
+ * @date 2024-02-20
  *
- * This source file is part of an example system for MITRE's 2024 Embedded
- * System CTF (eCTF). This code is being provided only for educational purposes
- * for the 2024 MITRE eCTF competition, and may not meet MITRE standards for
- * quality. Use this code at your own risk!
+ * @copyright Copyright (c) 2024
  *
- * @copyright Copyright (c) 2024 The MITRE Corporation
  */
 
 #include "board.h"
@@ -17,17 +14,13 @@
 #include "icc.h"
 #include "led.h"
 
-#include "mxc_delay.h"
-#include "mxc_device.h"
-#include "nvic_table.h"
-
 #include <stdbool.h>
 #include <stdint.h>
-#include <stdio.h>
 #include <string.h>
 
 #include "errors.h"
 #include "host_messaging.h"
+#include "packets.h"
 #include "simple_flash.h"
 #include "simple_i2c_controller.h"
 
@@ -37,26 +30,10 @@
 #endif
 
 // Includes from containerized build
-#include "ectf_params.h"
+#include "ectf_params_secure.h"
 #include "global_secrets_secure.h"
 
 using namespace i2c;
-
-// Passed in through ectf-params.h
-// Example of format of ectf-params.h shown here
-/*
-#define AP_PIN "123456"
-#define AP_TOKEN "0123456789abcdef"
-#define COMPONENT_IDS 0x11111124, 0x11111125
-#define COMPONENT_CNT 2
-#define AP_BOOT_MSG "Test boot message"
-*/
-
-static inline void unwrap(uint8_t *key, uint8_t *wrapper, uint8_t len) {
-    for (uint8_t i = 0; i < len) {
-        key[i] ^= wrapper[i];
-    }
-}
 
 // Flash Macros
 #define FLASH_ADDR                                                             \
@@ -86,16 +63,20 @@ flash_entry flash_status;
  requirements.
 
 */
-int secure_send(uint8_t address, uint8_t *buffer, uint8_t len) {
-    packet_t<packet_type_t::SECURE> packet;
-    packet.header.magic = packet_magic_t::ENCRYPTED;
-    packet.header.checksum = 0;
+int secure_send(const uint8_t address, const uint8_t *const buffer,
+                const uint8_t len) {
+    // TODO: Andrew, implement secure_send
+    packet_t<packet_type_t::SECURE> tx_packet;
+    tx_packet.header.magic = packet_magic_t::ENCRYPTED;
+    tx_packet.header.checksum = 0;
 
-    const auto response = send_i2c_tx<packet_type_t::SECURE>(address, packet);
+    const packet_t<packet_type_t::SECURE> rx_packet =
+        send_i2c_master_tx<packet_type_t::SECURE, packet_type_t::SECURE>(
+            address, tx_packet);
 
-    if (response.header.magic != packet_magic_t::ENCRYPTED) {
+    if (rx_packet.header.magic != packet_magic_t::ENCRYPTED) {
         return -1;
-    } else if (response.type == packet_type_t::ERROR) {
+    } else if (rx_packet.type == packet_type_t::ERROR) {
         return -1;
     } else {
         return 0;
@@ -114,16 +95,19 @@ int secure_send(uint8_t address, uint8_t *buffer, uint8_t len) {
  * functionality. This function must be implemented by your team to align with
  * the security requirements.
  */
-int secure_receive(i2c_addr_t address, uint8_t *buffer) {
-    packet_t<packet_type_t::SECURE> packet;
-    packet.header.magic = packet_magic_t::ENCRYPTED;
-    packet.header.checksum = 0;
+int secure_receive(const i2c_addr_t address, const uint8_t *const buffer) {
+    // TODO: Andrew, implement secure_receive
+    packet_t<packet_type_t::SECURE> tx_packet;
+    tx_packet.header.magic = packet_magic_t::ENCRYPTED;
+    tx_packet.header.checksum = 0;
 
-    const auto response = send_i2c_tx<packet_type_t::SECURE>(address, packet);
+    const packet_t<packet_type_t::SECURE> rx_packet =
+        send_i2c_master_tx<packet_type_t::SECURE, packet_type_t::SECURE>(
+            address, tx_packet);
 
-    if (response.header.magic != packet_magic_t::ENCRYPTED) {
+    if (rx_packet.header.magic != packet_magic_t::ENCRYPTED) {
         return -1;
-    } else if (response.type == packet_type_t::ERROR) {
+    } else if (rx_packet.type == packet_type_t::ERROR) {
         return -1;
     } else {
         return 0;
@@ -141,15 +125,14 @@ int secure_receive(i2c_addr_t address, uint8_t *buffer) {
  * for the current AP. This functionality is utilized in POST_BOOT
  * functionality. This function must be implemented by your team.
  */
-int get_provisioned_ids(uint32_t *const buffer) {
+static int get_provisioned_ids(uint32_t *const buffer) {
+    // TODO: Maybe make some changes?
     memcpy(buffer, flash_status.component_ids,
            flash_status.component_cnt * sizeof(uint32_t));
-    return flash_status.component_cnt;
+    return static_cast<int>(flash_status.component_cnt);
 }
 
-// Initialize the device
-// This must be called on startup to initialize the flash and i2c interfaces
-error_t init() {
+static mitre_error_t init() {
 
     // Enable global interrupts
     __enable_irq();
@@ -167,66 +150,69 @@ error_t init() {
 
         flash_status.flash_magic = FLASH_MAGIC;
         flash_status.component_cnt = COMPONENT_CNT;
-        const uint32_t component_ids[COMPONENT_CNT] = {COMPONENT_IDS};
-        memcpy(flash_status.component_ids, component_ids,
+        memcpy(flash_status.component_ids, COMPONENT_IDS,
                COMPONENT_CNT * sizeof(uint32_t));
 
         if (flash_simple_write(FLASH_ADDR,
                                reinterpret_cast<uint32_t *>(&flash_status),
                                sizeof(flash_entry)) < 0) {
             print_error("Failed to write to flash\n");
-            return error_t::ERROR;
+            return mitre_error_t::ERROR;
         }
     }
 
-    if (i2c_simple_controller_init() != error_t::SUCCESS) {
+    if (i2c_simple_controller_init() != mitre_error_t::SUCCESS) {
         print_error("Failed to initialize I2C\n");
-        return error_t::ERROR;
+        return mitre_error_t::ERROR;
     }
-    return error_t::SUCCESS;
+    return mitre_error_t::SUCCESS;
 }
 
-error_t list_components(void) {
-    // Print out provisioned component IDs
-    for (unsigned i = 0; i < flash_status.component_cnt; ++i) {
-        print_info("P>0x%08x\n", flash_status.component_ids[i]);
+static mitre_error_t list_components() {
+    for (uint32_t i = 0; i < flash_status.component_cnt; ++i) {
+        print_info("P>0x%08lx\n", flash_status.component_ids[i]);
     }
 
-    // Buffers for board link communication
-    uint8_t receive_buffer[MAX_I2C_MESSAGE_LEN] = {0};
-    uint8_t transmit_buffer[MAX_I2C_MESSAGE_LEN] = {0};
-
-    for (i2c_addr_t addr = 0x8; addr < 0x78; addr++) {
+    for (i2c_addr_t addr = 0x8; addr < 0x78; ++addr) {
         // I2C Blacklist:
         // 0x18, 0x28, and 0x36 conflict with separate devices on MAX78000FTHR
         if (addr == 0x18 || addr == 0x28 || addr == 0x36) {
             continue;
         }
 
-        // Create command message
-        command_message *command = (command_message *)transmit_buffer;
-        command->opcode = COMPONENT_CMD_SCAN;
-
-        // Send out command and receive result
-        error_t result = issue_cmd(addr, transmit_buffer, receive_buffer);
-
-        // Success, device is present
-        if (result == error_t::SUCCESS) {
-            const scan_message *scan = (scan_message *)receive_buffer;
-            print_info("F>0x%08x\n", scan->component_id);
+        packet_t<packet_type_t::LIST_COMMAND> tx_packet;
+        tx_packet.header.magic = packet_magic_t::LIST;
+        // TODO: Andrew, add checksum
+        tx_packet.header.checksum = 0;
+        tx_packet.payload.len = 0x00;
+        packet_t<packet_type_t::LIST_ACK> rx_packet =
+            send_i2c_master_tx<packet_type_t::LIST_ACK,
+                               packet_type_t::LIST_COMMAND>(addr, tx_packet);
+        if (rx_packet.header.magic != packet_magic_t::LIST_ACK) {
+            // Invalid response
+            continue;
+        } else if (rx_packet.header.checksum != 0) {
+            // TODO: Andrew, add checksum
+            // Invalid checksum
+            continue;
+        } else if (rx_packet.payload.len != 0x04) {
+            // Invalid payload length
+            continue;
         }
+        const uint32_t component_id =
+            *reinterpret_cast<uint32_t *>(rx_packet.payload.data);
+        print_info("F>0x%08lx\n", component_id);
     }
     print_success("List\n");
-    return error_t::SUCCESS;
+    return mitre_error_t::SUCCESS;
 }
 
-error_t validate_components(void) {
-    // Buffers for board link communication
-    uint8_t receive_buffer[MAX_I2C_MESSAGE_LEN] = {0};
-    uint8_t transmit_buffer[MAX_I2C_MESSAGE_LEN] = {0};
+static mitre_error_t validate_components() {
+    // This is the signing part (all systems valid on page 5)
 
-    // Send validate command to each component
-    for (unsigned i = 0; i < flash_status.component_cnt; ++i) {
+    // TODO: Tyler, implement packet checks and signature algorithms
+    for (uint32_t i = 0; i < flash_status.component_cnt; ++i) {
+        /*
         // Set the I2C address of the component
         i2c_addr_t addr =
             component_id_to_i2c_addr(flash_status.component_ids[i]);
@@ -236,31 +222,31 @@ error_t validate_components(void) {
         command->opcode = COMPONENT_CMD_VALIDATE;
 
         // Send out command and receive result
-        error_t result = issue_cmd(addr, transmit_buffer, receive_buffer);
-        if (result == error_t::ERROR) {
+        mitre_error_t result = issue_cmd(addr, transmit_buffer, receive_buffer);
+        if (result == mitre_error_t::ERROR) {
             print_error("Could not validate component\n");
-            return error_t::ERROR;
+            return mitre_error_t::ERROR;
         }
 
         const validate_message *validate = (validate_message *)receive_buffer;
         // Check that the result is correct
         if (validate->component_id != flash_status.component_ids[i]) {
-            print_error("Component ID: 0x%08x invalid\n",
+            print_error("Component ID: 0x%08lx invalid\n",
                         flash_status.component_ids[i]);
-            return error_t::ERROR;
+            return mitre_error_t::ERROR;
         }
+        */
     }
-    return error_t::SUCCESS;
+    return mitre_error_t::SUCCESS;
 }
 
-error_t boot_components(void) {
-    // Buffers for board link communication
-    uint8_t receive_buffer[MAX_I2C_MESSAGE_LEN] = {0};
-    uint8_t transmit_buffer[MAX_I2C_MESSAGE_LEN] = {0};
+static mitre_error_t boot_components() {
+    // This is the signed boot command part (Valid ACK Received? on page 5
 
-    // Send boot command to each component
-    for (unsigned i = 0; i < flash_status.component_cnt; ++i) {
+    // TODO: Tyler, implement boot_components
+    for (uint32_t i = 0; i < flash_status.component_cnt; ++i) {
         // Set the I2C address of the component
+        /*
         i2c_addr_t addr =
             component_id_to_i2c_addr(flash_status.component_ids[i]);
 
@@ -269,41 +255,72 @@ error_t boot_components(void) {
         command->opcode = COMPONENT_CMD_BOOT;
 
         // Send out command and receive result
-        error_t result = issue_cmd(addr, transmit_buffer, receive_buffer);
-        if (result == error_t::ERROR) {
+        mitre_error_t result = issue_cmd(addr, transmit_buffer, receive_buffer);
+        if (result == mitre_error_t::ERROR) {
             print_error("Could not boot component\n");
-            return error_t::ERROR;
+            return mitre_error_t::ERROR;
         }
 
         // Print boot message from component
-        print_info("0x%08x>%s\n", flash_status.component_ids[i], receive_buffer);
+        print_info("0x%08lx>%s\n", flash_status.component_ids[i],
+                   receive_buffer);
+                   */
     }
-    return error_t::SUCCESS;
+    return mitre_error_t::SUCCESS;
 }
 
-error_t attest_component(uint32_t component_id) {
-    // Buffers for board link communication
-    uint8_t receive_buffer[MAX_I2C_MESSAGE_LEN] = {0};
-    uint8_t transmit_buffer[MAX_I2C_MESSAGE_LEN] = {0};
+static mitre_error_t attest_component(const uint32_t component_id) {
+    const i2c_addr_t addr = component_id_to_i2c_addr(component_id);
 
-    // Set the I2C address of the component
-    i2c_addr_t addr = component_id_to_i2c_addr(component_id);
+    packet_t<packet_type_t::ATTEST_COMMAND> tx_packet;
+    tx_packet.header.magic = packet_magic_t::ATTEST;
+    // TODO: Andrew, add checksum
+    tx_packet.header.checksum = 0;
+    tx_packet.payload.len = 0x06;
 
-    // Create command message
-    command_message *command = (command_message *)transmit_buffer;
-    command->opcode = COMPONENT_CMD_ATTEST;
+    memcpy(tx_packet.payload.data, "ATTEST", 0x06);
 
-    // Send out command and receive result
-    error_t result = issue_cmd(addr, transmit_buffer, receive_buffer);
-    if (result == error_t::ERROR) {
+    // tx_packet.payload.sig = 0;
+    // TODO: Henry and David, implement signature algorithm here
+
+    const packet_t<packet_type_t::ATTEST_ACK> rx_packet =
+        send_i2c_master_tx<packet_type_t::ATTEST_ACK,
+                           packet_type_t::ATTEST_COMMAND>(addr, tx_packet);
+
+    if (rx_packet.header.magic != packet_magic_t::ATTEST_ACK) {
+        // Invalid response
         print_error("Could not attest component\n");
-        return error_t::ERROR;
+        return mitre_error_t::ERROR;
+    } else if (rx_packet.header.checksum != 0) {
+        // TODO: Andrew, add checksum
+        // Invalid checksum
+        print_error("Could not attest component\n");
+        return mitre_error_t::ERROR;
+    } else if (rx_packet.payload.len != 0xC0) {
+        // Invalid payload length
+        print_error("Could not attest component\n");
+        return mitre_error_t::ERROR;
+    } else if (/*sigverify=*/false) {
+        // TODO: Henry and David, implement signature verification here
+        // Invalid signature
+        print_error("Could not attest component\n");
+        return mitre_error_t::ERROR;
     }
+    uint8_t attest_loc[0x40] = {};
+    uint8_t attest_date[0x40] = {};
+    uint8_t attest_cust[0x40] = {};
+
+    memcpy(attest_loc, rx_packet.payload.data, 0x40);
+    memcpy(attest_date, rx_packet.payload.data + 0x40, 0x40);
+    memcpy(attest_cust, rx_packet.payload.data + 0x80, 0x40);
+
+    // TODO: Henry and David, Decrypt attest_loc, attest_date, and attest_cust
 
     // Print out attestation data
-    print_info("C>0x%08x\n", component_id);
-    print_info("%s", receive_buffer);
-    return error_t::SUCCESS;
+    print_info("C>0x%08lx\n", component_id);
+    print_info("LOC>%s\nDATE>%s\nCUST>%s\n", attest_loc, attest_date,
+               attest_cust);
+    return mitre_error_t::SUCCESS;
 }
 
 // Boot sequence
@@ -318,7 +335,7 @@ void boot() {
 #else
     // Everything after this point is modifiable in your design
     // LED loop to show that boot occurred
-    while (1) {
+    while (true) {
         LED_On(LED1);
         MXC_Delay(500000);
         LED_On(LED2);
@@ -335,54 +352,53 @@ void boot() {
 #endif
 }
 
-// Compare the entered PIN to the correct PIN
-error_t validate_pin(void) {
+static mitre_error_t validate_pin() {
     char buf[7] = {0};
     recv_input("Enter pin: ", buf, sizeof(buf));
-    if (strcmp(buf, AP_PIN) == 0) {
+
+    // TODO: Ezquiel and Cam, compare hashes, not raw strings
+    if (memcmp(buf, ATTEST_HASH, 32) == 0) {
         print_debug("Pin Accepted!\n");
-        return error_t::SUCCESS;
+        return mitre_error_t::SUCCESS;
     }
     print_error("Invalid PIN!\n");
-    return error_t::ERROR;
+    return mitre_error_t::ERROR;
 }
 
-// Function to validate the replacement token
-error_t validate_token(void) {
+static mitre_error_t validate_token() {
     char buf[17] = {0};
     recv_input("Enter token: ", buf, sizeof(buf));
-    if (strcmp(buf, AP_TOKEN) == 0) {
+
+    // TODO: Ezquiel and Cam, compare hashes, not raw strings
+    if (memcmp(buf, REPLACEMENT_HASH, 32) == 0) {
         print_debug("Token Accepted!\n");
-        return error_t::SUCCESS;
+        return mitre_error_t::SUCCESS;
     }
     print_error("Invalid Token!\n");
-    return error_t::ERROR;
+    return mitre_error_t::ERROR;
 }
 
-// Boot the components and board if the components validate
-void attempt_boot(void) {
-    if (validate_components() != error_t::SUCCESS) {
+static void attempt_boot() {
+    if (validate_components() != mitre_error_t::SUCCESS) {
         print_error("Components could not be validated\n");
         return;
     }
     print_debug("All Components validated\n");
-    if (boot_components() != error_t::SUCCESS) {
+    if (boot_components() != mitre_error_t::SUCCESS) {
         print_error("Failed to boot all components\n");
         return;
     }
-    // Print boot message
-    // This always needs to be printed when booting
+
     print_info("AP>%s\n", AP_BOOT_MSG);
     print_success("Boot\n");
     // Boot
     boot();
 }
 
-// Replace a component if the PIN is correct
-void attempt_replace(void) {
+static void attempt_replace() {
     char buf[5] = {0};
 
-    if (validate_token() != error_t::SUCCESS) {
+    if (validate_token() != mitre_error_t::SUCCESS) {
         return;
     }
 
@@ -390,21 +406,23 @@ void attempt_replace(void) {
     uint32_t component_id_out = 0;
 
     recv_input("Component ID In: ", buf, sizeof(buf));
-    sscanf(buf, "%x", &component_id_in);
+    sscanf(buf, "%lx", &component_id_in);
     recv_input("Component ID Out: ", buf, sizeof(buf));
-    sscanf(buf, "%x", &component_id_out);
+    sscanf(buf, "%lx", &component_id_out);
 
     // Find the component to swap out
-    for (unsigned i = 0; i < flash_status.component_cnt; ++i) {
+    for (uint32_t i = 0; i < flash_status.component_cnt; ++i) {
         if (flash_status.component_ids[i] == component_id_out) {
             flash_status.component_ids[i] = component_id_in;
 
             // write updated component_ids to flash
             flash_simple_erase_page(FLASH_ADDR);
-            flash_simple_write(FLASH_ADDR, (uint32_t *)&flash_status,
+            flash_simple_write(FLASH_ADDR,
+                               reinterpret_cast<uint32_t *>(&flash_status),
                                sizeof(flash_entry));
 
-            print_debug("Replaced 0x%08x with 0x%08x\n", component_id_out,
+            // TODO: Ezquiel and Cam, implement component signatures here
+            print_debug("Replaced 0x%08lx with 0x%08lx\n", component_id_out,
                         component_id_in);
             print_success("Replace\n");
             return;
@@ -412,39 +430,35 @@ void attempt_replace(void) {
     }
 
     // Component Out was not found
-    print_error("Component 0x%08x is not provisioned for the system\r\n",
+    print_error("Component 0x%08lx is not provisioned for the system\r\n",
                 component_id_out);
 }
 
-// Attest a component if the PIN is correct
-void attempt_attest(void) {
+static void attempt_attest() {
     char buf[5] = {0};
 
-    if (validate_pin() != error_t::SUCCESS) {
+    if (validate_pin() != mitre_error_t::SUCCESS) {
         return;
     }
     uint32_t component_id = 0;
     recv_input("Component ID: ", buf, sizeof(buf));
-    sscanf(buf, "%x", &component_id);
-    if (attest_component(component_id) == error_t::SUCCESS) {
+    sscanf(buf, "%lx", &component_id);
+    if (attest_component(component_id) == mitre_error_t::SUCCESS) {
         print_success("Attest\n");
     }
 }
 
-int main(void) {
-    // Initialize board
-    if (init() != error_t::SUCCESS) {
+int main() {
+    if (init() != mitre_error_t::SUCCESS) {
         print_error("Failed to initialize board\n");
         return -1;
     }
 
-    // Print the component IDs to be helpful
-    // Your design does not need to do this
     print_info("Application Processor Started\n");
 
     // Handle commands forever
     char buf[8] = {0};
-    while (1) {
+    while (true) {
         recv_input("Enter Command: ", buf, sizeof(buf));
 
         // Execute requested command

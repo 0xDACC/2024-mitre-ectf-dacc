@@ -13,10 +13,6 @@
 
 #include <stdint.h>
 
-/**
- * @brief Error Codes for functions
- * 
- */
 enum class mitre_error_t {
     SUCCESS = 0,
     ERROR = 1,

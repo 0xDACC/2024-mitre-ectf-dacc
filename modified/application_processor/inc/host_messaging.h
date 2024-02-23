@@ -9,17 +9,13 @@
  *
  */
 
-#ifndef HOST_MESSAGING
-#define HOST_MESSAGING
+#ifndef __HOST_MESSAGING__
+#define __HOST_MESSAGING__
 
 #include <stdarg.h>
 #include <stddef.h>
 #include <stdint.h>
 #include <stdio.h>
-
-#if __cplusplus
-extern "C" {
-#endif
 
 // Print a message through USB UART and then receive a line over USB UART
 void recv_input(const char *msg, char *buf, size_t buflen);
@@ -105,8 +101,4 @@ static inline void print_ack() {
 
 #undef PF
 
-#if __cplusplus
-}
 #endif
-
-#endif /* HOST_MESSAGING */

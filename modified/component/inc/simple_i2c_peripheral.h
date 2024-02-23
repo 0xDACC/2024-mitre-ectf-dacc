@@ -1,70 +1,248 @@
 /**
- * @file "simple_i2c_peripheral.h"
- * @author Frederich Stine
- * @brief Simple Asynchronous I2C Peripheral Header
- * @date 2024
+ * @file simple_i2c_controller.h
+ * @author Andrew Langan (alangan444@icloud.com)
+ * @brief Low Level I2C Communication Interface
+ * @version 0.1
+ * @date 2024-02-01
  *
- * This source file is part of an example system for MITRE's 2024 Embedded
- * System CTF (eCTF). This code is being provided only for educational purposes
- * for the 2024 MITRE eCTF competition, and may not meet MITRE standards for
- * quality. Use this code at your own risk!
+ * @copyright Copyright (c) 2024
  *
- * @copyright Copyright (c) 2024 The MITRE Corporation
  */
 
-#ifndef __I2C_SIMPLE_PERIPHERAL__
-#define __I2C_SIMPLE_PERIPHERAL__
+#ifndef SIMPLE_I2C_PERIPHERAL
+#define SIMPLE_I2C_PERIPHERAL
 
-#include "board.h"
-#include "i2c.h"
-#include "i2c_reva.h"
-#include "i2c_reva_regs.h"
-#include "mxc_errors.h"
-#include "nvic_table.h"
-#include "stdbool.h"
-#include "stdint.h"
+#include "errors.h"
+#include "packets.h"
+#include <stdint.h>
 
-/******************************** MACRO DEFINITIONS
- * ********************************/
-#define I2C_FREQ 100000
-#define I2C_INTERFACE MXC_I2C1
-#define MAX_REG TRANSMIT_LEN
-#define MAX_I2C_MESSAGE_LEN 256
+namespace i2c {
+extern volatile int I2C_FLAG;
 
-/******************************** EXTERN DEFINITIONS
- * ********************************/
-// Extern definition to make I2C_REGS and I2C_REGS_LEN
-// accessible outside of the implementation
-extern volatile uint8_t *I2C_REGS[6];
-extern int I2C_REGS_LEN[6];
+constexpr const uint32_t I2C_FREQ = 100000;
 
-/******************************** TYPE DEFINITIONS
- * ********************************/
-// Enumeration with registers on the peripheral device
-typedef enum {
-    RECEIVE,
-    RECEIVE_DONE,
-    RECEIVE_LEN,
-    TRANSMIT,
-    TRANSMIT_DONE,
-    TRANSMIT_LEN,
-} ECTF_I2C_REGS;
+using i2c_addr_t = uint8_t;
+using i2c_cb_t = mitre_error_t (*)(const uint8_t *const data,
+                                   const uint32_t len);
+using success_cb_t = void (*)();
 
-typedef uint8_t i2c_addr_t;
-
-/******************************** FUNCTION PROTOTYPES
- * ********************************/
 /**
  * @brief Initialize the I2C Connection
  *
- * @param addr: i2c_addr_t, the address of the I2C peripheral
- *
- * @return int: negative if error, zero if successful
- *
- * Initialize the I2C by enabling the module, setting the address,
- * setting the correct frequency, and enabling the interrupt to our
- * i2c_simple_isr
+ * @param addr I2C Address
+ * @param cb Callback function for processing received data
  */
-int i2c_simple_peripheral_init(i2c_addr_t addr);
+mitre_error_t i2c_simple_peripheral_init(uint8_t addr, i2c_cb_t cb);
 
-#endif
+/**
+ * @brief Perform an I2C Transaction
+ *
+ * @tparam R Expected packet type
+ * @tparam T Packet type to send
+ * @param addr I2C Address
+ * @param packet Packet to send
+ * @return packet_t<R> Received packet
+ */
+template <packet_type_t R, packet_type_t T>
+packet_t<R> send_i2c_slave_tx(packet_t<T> packet);
+
+/**
+ * @brief Convert 4-byte component ID to I2C address
+ *
+ * @param component_id component_id to convert
+ *
+ * @return i2c_addr_t, i2c address
+ */
+constexpr i2c_addr_t component_id_to_i2c_addr(const uint32_t component_id) {
+    return component_id & 0xFF;
+}
+
+/**
+ * @brief Performs an I2C Transaction
+ *
+ */
+class I2C_Handler {
+  public:
+    explicit I2C_Handler(const i2c_cb_t cb) : processing_cb(cb) {}
+
+    ~I2C_Handler();
+    /**
+     * @brief Get the packet
+     *
+     * @tparam R Received packet type
+     * @return packet_t<R> Received packet
+     */
+    template <packet_type_t R> packet_t<R> get_packet() {
+        packet_t<R> packet;
+        packet.header.magic = rxbuf[0];
+        packet.header.checksum = *reinterpret_cast<uint32_t *>(&rxbuf[1]);
+        memcpy(&packet.payload, &rxbuf[5], sizeof(payload_t<R>));
+        return packet;
+    }
+    /**
+     * @brief Get the raw received data
+     *
+     * @param len Returns the length of the data
+     * @return uint8_t* Pointer to the data
+     */
+    uint8_t *get_raw(uint32_t *const len) {
+        *len = rxcnt;
+        return rxbuf;
+    }
+    /**
+     * @brief Set the raw TX buffer to a packet
+     *
+     * @tparam T The packet type
+     * @param packet The packet to send
+     */
+    template <packet_type_t T> void send_packet(packet_t<T> packet) {
+        txbuf[0] = static_cast<uint8_t>(packet.header.magic);
+        *reinterpret_cast<uint32_t *>(&txbuf[1]) = packet.header.checksum;
+        *reinterpret_cast<payload_t<T> *>(&txbuf[5]) = packet.payload;
+        txsize = sizeof(packet_t<T>);
+        rxsize = bufsize; // max size
+    }
+    /**
+     * @brief Set the raw TX buffer
+     *
+     * @param buf The buffer to send
+     * @param len The length of the buffer
+     */
+    void send_raw(const uint8_t *const buf, const uint32_t len) {
+        for (uint32_t i = 0; i < len; ++i) {
+            txbuf[i] = buf[i];
+        }
+        txsize = len;
+        rxsize = bufsize; // max size
+    }
+    /**
+     * @brief Append raw data to the RX buffer
+     *
+     * @param data The data to append
+     * @param len The length of the data
+     * @return uint32_t The remaining space in the buffer
+     */
+    uint32_t append_rx(const uint8_t *const data, uint32_t len) {
+        if (rxcnt + len > bufsize) {
+            len = bufsize - rxcnt;
+        }
+        for (uint32_t i = 0; i < len; ++i) {
+            rxbuf[rxcnt + i] = data[i];
+        }
+        rxcnt += len;
+        return rxsize - rxcnt;
+    }
+
+    /**
+     * @brief Remove raw data from the TX buffer
+     *
+     * @param data Buffer to remove data to
+     * @param len Length of the buffer
+     * @return uint32_t Remaining space in the buffer
+     */
+    uint32_t remove_tx(uint8_t *const data, uint32_t len) {
+        if (txcnt + len > bufsize) {
+            len = bufsize - txcnt;
+        }
+        for (uint32_t i = 0; i < len; ++i) {
+            data[i] = txbuf[txcnt + i];
+        }
+        txcnt += len;
+        return txsize - txcnt;
+    }
+
+    /**
+     * @brief Set the success callback
+     *
+     * @param cb The callback function
+     */
+    void set_success_callback(const success_cb_t cb) { success_cb = cb; }
+
+    /**
+     * @brief Call the callback function
+     *
+     * @param success_callback The callback function called on success
+     * @return mitre_error_t Whether the callback was successful
+     *
+     */
+    mitre_error_t call_processing_callback() {
+        if (processing_cb == nullptr) {
+            return mitre_error_t::SUCCESS;
+        }
+        return processing_cb(rxbuf, rxcnt);
+    }
+
+    /**
+     * @brief Call the success callback
+     *
+     */
+    void call_success_callback() const {
+        I2C_FLAG = 1;
+        if (success_cb != nullptr) {
+            success_cb();
+        }
+    }
+
+    /**
+     * @brief Check if the transaction is done
+     *
+     * @return bool Whether the transaction is done
+     */
+    constexpr bool is_tx_done() { return txcnt >= txsize; }
+
+    /**
+     * @brief Clear the buffers to prepare for a new transaction
+     *
+     */
+    void clear() {
+        for (uint32_t i = 0; i < bufsize; ++i) {
+            txbuf[i] = 0;
+            rxbuf[i] = 0;
+        }
+        txsize = 0;
+        rxsize = 0;
+        rxcnt = 0;
+        txcnt = 0;
+    }
+
+    /**
+     * @brief Clear the RX counter
+     *
+     */
+    void clear_rxcnt() { rxcnt = 0; }
+
+    /**
+     * @brief Clear the TX counter
+     *
+     */
+    void clear_txcnt() { txcnt = 0; }
+
+  private:
+    static constexpr const uint32_t bufsize = 299;
+    uint8_t txbuf[bufsize] = {};
+    uint8_t rxbuf[bufsize] = {};
+    uint32_t txsize = 0;
+    uint32_t rxsize = 0;
+    uint32_t rxcnt = 0;
+    uint32_t txcnt = 0;
+    i2c_cb_t processing_cb = nullptr;
+    success_cb_t success_cb = nullptr;
+};
+/**
+ * @brief Send a raw I2C transaction
+ *
+ * @param buffer Buffer to send
+ * @param len Length of buffer, returns length of received data
+ * @return uint8_t* Pointer to received data
+ */
+uint8_t *i2c_slave_raw_tx(uint8_t *buffer, uint32_t *len);
+
+/**
+ * @brief Global I2C Handler
+ *
+ */
+extern I2C_Handler *handler;
+
+} // namespace i2c
+
+#endif /* SIMPLE_I2C_PERIPHERAL */
