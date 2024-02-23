@@ -208,6 +208,8 @@ static void process_list(const uint8_t *const data, const uint32_t len) {
     rx_packet.header.magic = packet_magic_t::LIST;
     rx_packet.header.checksum = *reinterpret_cast<const uint32_t *>(&data[1]);
 
+    memcpy(&rx_packet.payload, &data[5], len - 5);
+
     if (rx_packet.header.checksum != 0) {
         // TODO: Andrew, add checksum
         // Checksum failed
