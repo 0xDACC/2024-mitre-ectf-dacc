@@ -28,6 +28,40 @@
 \newpage{}
 \par\end{center}
 
+\section{Proposed List Changes}
+
+\paragraph{Use standard I2C packet structure}
+
+\begin{table}
+\noindent \centering{}%
+\begin{tabular}{|c|c|c|}
+\hline 
+\multicolumn{2}{|c|}{Header} & \multicolumn{1}{c|}{Payload}\tabularnewline
+\hline 
+Packet Magic & Checksum & Length\tabularnewline
+\hline 
+(1 byte) & (4 bytes) & (1 byte)\tabularnewline
+\hline 
+0x4C &  & 0x00\tabularnewline
+\hline 
+\end{tabular}\caption{List Packet}
+\end{table}
+\begin{table}
+\noindent \centering{}%
+\begin{tabular}{|c|c|c|c|}
+\hline 
+\multicolumn{2}{|c|}{Header} & \multicolumn{2}{c|}{Payload}\tabularnewline
+\hline 
+Packet Magic & Checksum & Length & Data\tabularnewline
+\hline 
+(1 byte) & (4 bytes) & (1 byte) & (4 bytes)\tabularnewline
+\hline 
+0x4D &  & 0x04 & \tabularnewline
+\hline 
+\end{tabular}\caption{List Response Packet}
+\end{table}
+
+
 \section{Proposed Attest Changes}
 
 \paragraph{Store attestation PIN as a hash with enough rounds that it takes
@@ -37,13 +71,46 @@ approximately 2 seconds.}
 \item Makes raw PIN unable to be extracted from flash
 \end{itemize}
 
-\paragraph{Store attestation data encrypted with symmetric key as 1 round less
-of attestation pin hash}
+\paragraph{Wrap attestation symmetric key with attestation PIN hash}
+
+\paragraph{Store attestation data encrypted with unwrapped symmetric key}
 \begin{itemize}
 \item Also limits brute force and makes PIN unreadable from flash
 \end{itemize}
 
 \paragraph{Meets SR3 and SR4}
+
+\begin{table}
+\noindent \centering{}%
+\begin{tabular}{|c|c|c|c|c|}
+\hline 
+\multicolumn{2}{|c|}{Header} & \multicolumn{3}{c|}{Payload}\tabularnewline
+\hline 
+Packet Magic & Checksum & Length & Data & Signature\tabularnewline
+\hline 
+(1 byte) & (4 bytes) & (1 byte) & (6 bytes) & (65 bytes)\tabularnewline
+\hline 
+0xAA &  & 0x06 & 0x415454455354 & \tabularnewline
+\hline 
+\end{tabular}\caption{Attestation Data Packet}
+\end{table}
+
+\noindent 
+\begin{table}
+\noindent \centering{}%
+\begin{tabular}{|c|c|c|c|c|}
+\hline 
+\multicolumn{2}{|c|}{Header} & \multicolumn{3}{c|}{Payload}\tabularnewline
+\hline 
+Packet Magic & Checksum & Length & Attestation Data & Signature\tabularnewline
+\hline 
+(1 byte) & (4 bytes) & (1 byte) & (192 bytes) & (65 bytes)\tabularnewline
+\hline 
+0xFA &  & 0xC0 &  & \tabularnewline
+\hline 
+\end{tabular}\caption{Attestation ACK Packet}
+\end{table}
+
 
 \section{Proposed Replace Changes}
 
@@ -69,9 +136,9 @@ of attestation pin hash}
 
 \paragraph{Verify integrity of all 3 boards}
 \begin{itemize}
-\item Store public keys A and D and private keys B and C on AP
-\item Store public key B and private key A on Component1
-\item Store public key C and private key D on Component2
+\item Store public keys C and private key A on AP
+\item Store public key A and private key C on Component1
+\item Store public key A and private key C on Component2
 \end{itemize}
 \noindent \begin{center}
 \noindent \begin{center}
@@ -100,26 +167,26 @@ of attestation pin hash}
 \item AP verifies Component1
 \begin{enumerate}
 \item AP generates a random number and asks Component1 to sign with key
-A
-\item AP verifies signature using key A
+C
+\item AP verifies signature using key C
 \end{enumerate}
 \item Component1 verifies AP
 \begin{enumerate}
 \item Component1 generates a random number and asks AP to sign with key
-B
-\item Component1 verifies signature using key B
+C
+\item Component1 verifies signature using key C
 \end{enumerate}
 \item Component2 verifies AP
 \begin{enumerate}
 \item Component2 generates a random number and asks AP to sign with key
-C
-\item Component2 verifies signature using key C
+A
+\item Component2 verifies signature using key A
 \end{enumerate}
 \item AP verifies Component2
 \begin{enumerate}
 \item AP generates a random number and asks Component2 to sign with key
-D
-\item AP verifies signature using key D
+C
+\item AP verifies signature using key C
 \end{enumerate}
 \end{enumerate}
 
@@ -167,9 +234,9 @@ D
 \hline 
 Packet Magic & Checksum & Length & Data & Signature\tabularnewline
 \hline 
-(1 byte) & (3 bytes) & (1 byte) & (4 bytes) & (65 bytes)\tabularnewline
+(1 byte) & (4 bytes) & (1 byte) & (4 bytes) & (65 bytes)\tabularnewline
 \hline 
-0xBB &  & 0x45 & 0x424F4F54 & \tabularnewline
+0xBB &  & 0x04 & 0x424F4F54 & \tabularnewline
 \hline 
 \end{tabular}\caption{Component Boot Packet}
 \end{table}
@@ -181,13 +248,13 @@ Packet Magic & Checksum & Length & Data & Signature\tabularnewline
 \hline 
 \multicolumn{2}{|c|}{Header} & \multicolumn{3}{c|}{Payload}\tabularnewline
 \hline 
-Packet Magic & Checksum & Length & Data & Signature\tabularnewline
+Packet Magic & Checksum & Length & Boot Message & Signature\tabularnewline
 \hline 
-(1 byte) & (4 bytes) & (1 byte) & (1 byte) & (65 bytes)\tabularnewline
+(1 byte) & (4 bytes) & (1 byte) & (64 bytes) & (65 bytes)\tabularnewline
 \hline 
-0xAA &  & 0x42 & 0xFF or 0x00 or 0xBB & \tabularnewline
+0xFB &  & 0x40 &  & \tabularnewline
 \hline 
-\end{tabular}\caption{Startup ACK Packet}
+\end{tabular}\caption{Boot ACK Packet}
 \end{table}
 
 
@@ -227,9 +294,9 @@ component, and do not continue operation.}}
 \hline 
 \multicolumn{2}{|c|}{Header} & \multicolumn{5}{c|}{Encrypted Payload}\tabularnewline
 \hline 
-Packet Magic & Checksum & Payload Magic & Length & Nonce & Data & HMAC\tabularnewline
+Packet Magic & Checksum & Payload Magic & Length - 1 & Nonce & Data & HMAC\tabularnewline
 \hline 
-(1 byte) & (4 bytes) & (1 byte) & (1 byte) & (8 bytes) & (255 bytes) & (32 bytes)\tabularnewline
+(1 byte) & (4 bytes) & (1 byte) & (1 byte) & (4 bytes) & (256 bytes) & (32 bytes)\tabularnewline
 \hline 
 0xEE &  & 0xDD &  &  &  & \tabularnewline
 \hline 
