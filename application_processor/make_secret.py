@@ -99,7 +99,9 @@ def parse_ap_params() -> tuple[int, int, list[str], str]:
         elif "AP_TOKEN" in line:
             replacement_token = int(line.split(" ")[2].strip(' \n"'), 16)
         elif "COMPONENT_IDS" in line:
-            component_ids = line.split(" ")[2].strip(' \n"').split(",")
+            component_ids = "".join(line.split(
+                " ")[2::]).strip(' \n"').split(",")
+            print(component_ids)
         elif "AP_BOOT_MSG" in line:
             boot_msg = line.split(" ")[2].strip(' \n"')
     if not attest_pin or not replacement_token or not component_ids or not boot_msg:
