@@ -8,10 +8,12 @@ from cryptography.hazmat.primitives.ciphers.modes import CTR
 
 input_component = open("inc/ectf_params.h", "rt", encoding="utf-8")
 output = open("inc/ectf_params_secure.h", "wt", encoding="utf-8")
-output.write("""
+output.write(
+    """
 #include <stdint.h>
 #pragma once
-""")
+"""
+)
 
 
 def wrap_key(key: bytes, nonce: bytes, wrapper: bytes) -> bytes:
@@ -25,8 +27,7 @@ def wrap_key(key: bytes, nonce: bytes, wrapper: bytes) -> bytes:
     Returns:
         bytes: Wrapped key
     """
-    cipher = Cipher(AES(key), mode=CTR(nonce),
-                    backend=default_backend()).encryptor()
+    cipher = Cipher(AES(key), mode=CTR(nonce), backend=default_backend()).encryptor()
     return cipher.update(wrapper) + cipher.finalize()
 
 
@@ -45,8 +46,7 @@ def encrypt_attestation(
     Returns:
         tuple[bytes, bytes, bytes]: Encrypted attestation parameters
     """
-    cipher = Cipher(AES(key), mode=CTR(nonce),
-                    backend=default_backend()).encryptor()
+    cipher = Cipher(AES(key), mode=CTR(nonce), backend=default_backend()).encryptor()
     return (
         cipher.update(loc.encode()),
         cipher.update(date.encode()),
@@ -63,8 +63,7 @@ def write(type: str, name: str, values: list[str]) -> None:
         values (list[str]): Value of the constant
     """
     if "[" in type and "]" in type:
-        output.write(
-            f"constexpr const {type.split('[')[0]} {name}[{len(values)}] = {{")
+        output.write(f"constexpr const {type.split('[')[0]} {name}[{len(values)}] = {{")
         for value in values:
             output.write(f"{value},")
         output.write("};\n")
@@ -72,7 +71,7 @@ def write(type: str, name: str, values: list[str]) -> None:
         output.write(f"constexpr const {type} {name} = {values[0]};\n")
 
 
-def parse_component_attestation() -> tuple[str, str, str]:
+def parse_component_attestation() -> tuple[str, str, str, str, str]:
     """Parse the component parameters from the ectf_params.h file
 
     Raises:
@@ -85,6 +84,8 @@ def parse_component_attestation() -> tuple[str, str, str]:
     attest_loc: str = ""
     attest_date: str = ""
     attest_cust: str = ""
+    component_id: str = ""
+    component_boot_msg: str = ""
     for line in lines:
         if "ATTESTATION_LOC" in line:
             attest_loc = line.split(" ")[2].strip(' \n"')
@@ -92,7 +93,17 @@ def parse_component_attestation() -> tuple[str, str, str]:
             attest_date = line.split(" ")[2].strip(' \n"')
         elif "ATTESTATION_CUSTOMER" in line:
             attest_cust = line.split(" ")[2].strip(' \n"')
-    if not attest_loc or not attest_date or not attest_cust:
+        elif "COMPONENT_ID" in line:
+            component_id = line.split(" ")[2].strip(' \n"')
+        elif "COMPONENT_BOOT_MSG" in line:
+            component_boot_msg = line.split(" ")[2].strip(' \n"')
+    if (
+        not attest_loc
+        or not attest_date
+        or not attest_cust
+        or not component_id
+        or not component_boot_msg
+    ):
         raise ValueError("Missing attestation parameters")
     for _ in range(64 - len(attest_loc)):
         attest_loc += "\x00"
@@ -100,10 +111,14 @@ def parse_component_attestation() -> tuple[str, str, str]:
         attest_date += "\x00"
     for _ in range(64 - len(attest_cust)):
         attest_cust += "\x00"
-    return attest_loc, attest_date, attest_cust
+    for _ in range(64 - len(component_boot_msg)):
+        component_boot_msg += "\x00"
+    return attest_loc, attest_date, attest_cust, component_id, component_boot_msg
 
 
-attest_loc, attest_date, attest_cust = parse_component_attestation()
+attest_loc, attest_date, attest_cust, component_id, component_boot_msg = (
+    parse_component_attestation()
+)
 attest_key = secrets.token_bytes(16)
 attest_nonce = secrets.token_bytes(16)
 attest_loc, attest_date, attest_cust = encrypt_attestation(
@@ -119,6 +134,8 @@ write("uint8_t[]", "ATTEST_NONCE", [f"{b}" for b in attest_nonce])
 write("uint8_t[]", "ATTEST_LOC_ENC", [f"{b}" for b in attest_loc])
 write("uint8_t[]", "ATTEST_DATE_ENC", [f"{b}" for b in attest_date])
 write("uint8_t[]", "ATTEST_CUST_ENC", [f"{b}" for b in attest_cust])
+write("uint8_t[]", "COMPONENT_BOOT_MSG", [f"{b}" for b in component_boot_msg.encode()])
+write("uint32_t", "COMPONENT_ID", [component_id])
 
 
 attest_loc = attest_loc.hex()

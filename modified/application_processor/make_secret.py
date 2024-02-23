@@ -7,10 +7,12 @@ from cryptography.hazmat.primitives.hashes import Hash, SHA256
 
 input_ap = open("inc/ectf_params.h", "rt", encoding="utf-8")
 output = open("inc/ectf_params_secure.h", "wt", encoding="utf-8")
-output.write("""
+output.write(
+    """
 #include <stdint.h>
 #pragma once
-""")
+"""
+)
 
 
 def wrap_key(key: bytes, nonce: bytes, wrapper: bytes) -> bytes:
@@ -24,8 +26,7 @@ def wrap_key(key: bytes, nonce: bytes, wrapper: bytes) -> bytes:
     Returns:
         bytes: Wrapped key
     """
-    cipher = Cipher(AES(key), mode=CTR(nonce),
-                    backend=default_backend()).encryptor()
+    cipher = Cipher(AES(key), mode=CTR(nonce), backend=default_backend()).encryptor()
     return cipher.update(wrapper) + cipher.finalize()
 
 
@@ -68,8 +69,7 @@ def write(type: str, name: str, values: list[str]) -> None:
         values (list[str]): Value of the constant
     """
     if "[" in type and "]" in type:
-        output.write(
-            f"constexpr const {type.split('[')[0]} {name}[{len(values)}] = {{")
+        output.write(f"constexpr const {type.split('[')[0]} {name}[{len(values)}] = {{")
         for value in values:
             output.write(f"{value},")
         output.write("};\n")
@@ -77,7 +77,7 @@ def write(type: str, name: str, values: list[str]) -> None:
         output.write(f"constexpr const {type} {name} = {values[0]};\n")
 
 
-def parse_ap_params() -> tuple[int, int]:
+def parse_ap_params() -> tuple[int, int, list[str], str]:
     """Reads the AP parameters from the ectf_params.h file
 
     Raises:
@@ -89,22 +89,31 @@ def parse_ap_params() -> tuple[int, int]:
     lines: list[str] = input_ap.readlines()
     attest_pin: int = 0x0
     replacement_token: int = 0x0
+    component_ids: list[str] = []
+    boot_msg: str = ""
     for line in lines:
         if "AP_PIN" in line:
             attest_pin = int(line.split(" ")[2].strip(' \n"'))
         elif "AP_TOKEN" in line:
             replacement_token = int(line.split(" ")[2].strip(' \n"'), 16)
-    if not attest_pin or not replacement_token:
+        elif "COMPONENT_IDS" in line:
+            component_ids = line.split(" ")[2].strip(' \n"').split(",")
+        elif "AP_BOOT_MSG" in line:
+            boot_msg = line.split(" ")[2].strip(' \n"')
+    if not attest_pin or not replacement_token or not component_ids or not boot_msg:
         raise ValueError("Missing AP parameters")
-    return attest_pin, replacement_token
+    return attest_pin, replacement_token, component_ids, boot_msg
 
 
-attest_pin, replacement_token = parse_ap_params()
+attest_pin, replacement_token, component_ids, boot_msg = parse_ap_params()
 attest_pin = hash_pin(attest_pin, 1000)
 replacement_token = hash_replacement(replacement_token)
 
 write("uint8_t[]", "ATTEST_HASH", [f"{b}" for b in attest_pin])
 write("uint8_t[]", "REPLACEMENT_HASH", [f"{b}" for b in replacement_token])
+write("char *const", "AP_BOOT_MSG", [f'"{boot_msg}"'])
+write("uint32_t[]", "COMPONENT_IDS", [f"{id}" for id in component_ids])
+write("uint32_t", "COMPONENT_CNT", [f"{len(component_ids)}"])
 
 attest_pin = attest_pin.hex()
 replacement_token = replacement_token.hex()
