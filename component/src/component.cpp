@@ -62,9 +62,7 @@ static void secure_send(const uint8_t *const buffer, const uint8_t len) {
     tx_packet.header.magic = packet_magic_t::ENCRYPTED;
     tx_packet.header.checksum = 0;
 
-    const packet_t<packet_type_t::SECURE> rx_packet =
-        send_i2c_slave_tx<packet_type_t::SECURE, packet_type_t::SECURE>(
-            tx_packet);
+    const packet_t<packet_type_t::SECURE> rx_packet = {};
 
     if (rx_packet.header.magic != packet_magic_t::ENCRYPTED) {
     } else if (rx_packet.type == packet_type_t::ERROR) {
@@ -88,9 +86,7 @@ static int secure_receive(const uint8_t *const buffer) {
     tx_packet.header.magic = packet_magic_t::ENCRYPTED;
     tx_packet.header.checksum = 0;
 
-    const packet_t<packet_type_t::SECURE> rx_packet =
-        send_i2c_slave_tx<packet_type_t::SECURE, packet_type_t::SECURE>(
-            tx_packet);
+    const packet_t<packet_type_t::SECURE> rx_packet = {};
 
     if (rx_packet.header.magic != packet_magic_t::ENCRYPTED) {
         return -1;

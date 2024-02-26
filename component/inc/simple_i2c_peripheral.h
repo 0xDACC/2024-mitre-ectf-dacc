@@ -43,17 +43,6 @@ static void i2c_simple_isr();
 mitre_error_t i2c_simple_peripheral_init(uint8_t addr, i2c_cb_t cb);
 
 /**
- * @brief I2C Slave Handler
- *
- * @param i2c I2C interface
- * @param event Event
- * @param data Data
- * @return int Whether ot ACK or NACK
- */
-int I2C_SlaveHandler(mxc_i2c_regs_t *const i2c,
-                     const mxc_i2c_slave_event_t event, void *const data);
-
-/**
  * @brief Convert 4-byte component ID to I2C address
  *
  * @param component_id component_id to convert
@@ -248,29 +237,6 @@ uint8_t *i2c_slave_raw_tx(uint8_t *buffer, uint32_t *len);
  *
  */
 extern I2C_Handler *handler;
-
-/**
- * @brief Perform an I2C Transaction
- *
- * @tparam R Expected packet type
- * @tparam T Packet type to send
- * @param addr I2C Address
- * @param packet Packet to send
- * @return packet_t<R> Received packet
- */
-template <packet_type_t R, packet_type_t T>
-packet_t<R> send_i2c_slave_tx(packet_t<T> packet) {
-    handler->clear();
-    handler->send_packet<T>(packet);
-
-    if (MXC_I2C_SlaveTransaction(MXC_I2C1, I2C_SlaveHandler) == E_NO_ERROR) {
-        return handler->get_packet<R>();
-    } else {
-        packet_t<R> error;
-        error.header.magic = packet_magic_t::ERROR;
-        return error;
-    }
-}
 } // namespace i2c
 
 #endif /* SIMPLE_I2C_PERIPHERAL */

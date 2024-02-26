@@ -45,18 +45,6 @@ mitre_error_t i2c_simple_peripheral_init(const uint8_t addr,
     return mitre_error_t::SUCCESS;
 }
 
-static uint8_t *i2c_slave_raw_tx(const uint8_t *const buffer,
-                                 uint32_t *const len) {
-    handler->clear();
-    handler->send_raw(buffer, *len);
-
-    if (MXC_I2C_SlaveTransaction(MXC_I2C1, I2C_SlaveHandler) == E_NO_ERROR) {
-        return handler->get_raw(len);
-    } else {
-        return nullptr;
-    }
-}
-
 static void i2c_simple_isr() {
     uint8_t buf[8] = {};
     uint32_t len = 0;
