@@ -41,6 +41,8 @@ static void process_boot(const uint8_t *const data, const uint32_t len);
 static void process_list(const uint8_t *const data, const uint32_t len);
 static void process_validate(const uint8_t *const data, const uint32_t len);
 static void process_attest(const uint8_t *const data, const uint32_t len);
+enum class state_t { PREBOOT, POSTBOST };
+static volatile state_t state = state_t::PREBOOT;
 
 using namespace i2c;
 
@@ -197,7 +199,7 @@ static void process_boot(const uint8_t *const data, const uint32_t len) {
     // TODO: Tyler, implement signature algorithm here
 
     handler->send_packet<packet_type_t::BOOT_ACK>(tx_packet);
-    handler->set_success_callback(boot);
+    state = state_t::POSTBOST;
 }
 
 static void process_list(const uint8_t *const data, const uint32_t len) {
@@ -230,7 +232,6 @@ static void process_list(const uint8_t *const data, const uint32_t len) {
     memcpy(tx_packet.payload.data, &COMPONENT_ID, 0x04);
 
     handler->send_packet<packet_type_t::LIST_ACK>(tx_packet);
-    handler->set_success_callback(nullptr);
 }
 
 static void process_validate(const uint8_t *const data, const uint32_t len) {
@@ -282,7 +283,6 @@ static void process_attest(const uint8_t *const data, const uint32_t len) {
     // TODO: Henry and David, implement signature algorithm here
 
     handler->send_packet<packet_type_t::ATTEST_ACK>(tx_packet);
-    handler->set_success_callback(nullptr);
 }
 
 int main() {
@@ -302,17 +302,10 @@ int main() {
     LED_On(LED2);
 
     while (true) {
-        MXC_I2C_SlaveTransaction(MXC_I2C1, I2C_SlaveHandler);
-        switch (I2C_FLAG) {
-        case E_NO_ERROR:
-            printf("I2C Success\n");
-            handler->call_success_callback();
-            break;
-        case 1:
-            break;
-        default:
-            printf("I2C Error: %d\n", I2C_FLAG);
-            return -1;
+        // Do nothing
+        if (state == state_t::POSTBOST) {
+            // TODO: Disable all functions
+            boot();
         }
     }
 }

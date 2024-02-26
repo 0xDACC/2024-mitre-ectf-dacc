@@ -19,14 +19,20 @@
 #include <stdint.h>
 
 namespace i2c {
-extern volatile int I2C_FLAG;
-
 constexpr const uint32_t I2C_FREQ = 100000;
 
 using i2c_addr_t = uint8_t;
 using i2c_cb_t = mitre_error_t (*)(const uint8_t *const data,
                                    const uint32_t len);
-using success_cb_t = void (*)();
+
+/**
+ * @brief ISR for the I2C Peripheral
+ *
+ * This ISR allows for a fully asynchronous interface between controller and
+ * peripheral Transactions are able to begin immediately after a transaction
+ * ends
+ */
+static void i2c_simple_isr();
 
 /**
  * @brief Initialize the I2C Connection
@@ -76,10 +82,12 @@ class I2C_Handler {
     template <packet_type_t R> packet_t<R> get_packet() {
         packet_t<R> packet;
         packet.header.magic = static_cast<packet_magic_t>(rxbuf[0]);
-        packet.header.checksum = *reinterpret_cast<uint32_t *>(&rxbuf[1]);
+        memcpy(&packet.header.checksum, &rxbuf[1], 0x04);
         memcpy(&packet.payload, &rxbuf[5], sizeof(payload_t<R>));
+
         return packet;
     }
+
     /**
      * @brief Get the raw received data
      *
@@ -90,6 +98,7 @@ class I2C_Handler {
         *len = rxcnt;
         return rxbuf;
     }
+
     /**
      * @brief Set the raw TX buffer to a packet
      *
@@ -104,6 +113,7 @@ class I2C_Handler {
         txsize = sizeof(packet_t<T>);
         rxsize = bufsize; // max size
     }
+
     /**
      * @brief Set the raw TX buffer
      *
@@ -117,22 +127,21 @@ class I2C_Handler {
         txsize = len;
         rxsize = bufsize; // max size
     }
+
     /**
      * @brief Append raw data to the RX buffer
      *
      * @param data The data to append
      * @param len The length of the data
-     * @return uint32_t The remaining space in the buffer
      */
-    uint32_t append_rx(const uint8_t *const data, uint32_t len) {
-        if (rxcnt + len > bufsize) {
-            len = bufsize - rxcnt;
+    void append_rx(const uint8_t *const data, uint8_t len) {
+        if (len + rxcnt > rxsize) {
+            len = rxsize - rxcnt;
         }
-        for (uint32_t i = 0; i < len; ++i) {
+        for (uint8_t i = 0; i < len; ++i) {
             rxbuf[rxcnt + i] = data[i];
         }
         rxcnt += len;
-        return rxsize - rxcnt;
     }
 
     /**
@@ -140,25 +149,16 @@ class I2C_Handler {
      *
      * @param data Buffer to remove data to
      * @param len Length of the buffer
-     * @return uint32_t Remaining space in the buffer
      */
-    uint32_t remove_tx(uint8_t *const data, uint32_t len) {
-        if (txcnt + len > bufsize) {
-            len = bufsize - txcnt;
+    void remove_tx(uint8_t *const data, uint8_t *const len) {
+        if (*len + txcnt > txsize) {
+            *len = txsize - txcnt;
         }
-        for (uint32_t i = 0; i < len; ++i) {
+        for (uint8_t i = 0; i < *len; ++i) {
             data[i] = txbuf[txcnt + i];
         }
-        txcnt += len;
-        return txsize - txcnt;
+        txcnt += *len;
     }
-
-    /**
-     * @brief Set the success callback
-     *
-     * @param cb The callback function
-     */
-    void set_success_callback(const success_cb_t cb) { success_cb = cb; }
 
     /**
      * @brief Call the callback function
@@ -167,7 +167,7 @@ class I2C_Handler {
      * @return mitre_error_t Whether the callback was successful
      *
      */
-    mitre_error_t call_processing_callback() {
+    mitre_error_t call_processing_callback() const {
         if (processing_cb == nullptr) {
             return mitre_error_t::SUCCESS;
         }
@@ -175,22 +175,27 @@ class I2C_Handler {
     }
 
     /**
-     * @brief Call the success callback
+     * @brief Check if the TX is done
      *
+     * @return bool Whether the TX is done
      */
-    void call_success_callback() const {
-        I2C_FLAG = 1;
-        if (success_cb != nullptr) {
-            success_cb();
-        }
-    }
+    constexpr bool is_tx_done() const { return txcnt > txsize; }
 
     /**
-     * @brief Check if the transaction is done
-     *
-     * @return bool Whether the transaction is done
+     * @brief Check if the RX is done
+     * @return bool Whether the RX is done
      */
-    constexpr bool is_tx_done() { return txcnt >= txsize; }
+    constexpr bool is_rx_done() const { return rxcnt > rxsize; }
+
+    /**
+     * @brief Get the size of the next receive block
+     *
+     * @param available The available space in the FIFO
+     * @return constexpr uint32_t The size of the next receive block
+     */
+    constexpr uint32_t get_rx_size(const uint8_t available) const {
+        return available < (rxsize - rxcnt) ? available : rxsize - rxcnt;
+    }
 
     /**
      * @brief Clear the buffers to prepare for a new transaction
@@ -228,7 +233,6 @@ class I2C_Handler {
     uint32_t rxcnt = 0;
     uint32_t txcnt = 0;
     i2c_cb_t processing_cb = nullptr;
-    success_cb_t success_cb = nullptr;
 };
 /**
  * @brief Send a raw I2C transaction
@@ -258,7 +262,6 @@ template <packet_type_t R, packet_type_t T>
 packet_t<R> send_i2c_slave_tx(packet_t<T> packet) {
     handler->clear();
     handler->send_packet<T>(packet);
-    I2C_FLAG = 1;
 
     if (MXC_I2C_SlaveTransaction(MXC_I2C1, I2C_SlaveHandler) == E_NO_ERROR) {
         return handler->get_packet<R>();
