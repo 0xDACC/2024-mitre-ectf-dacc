@@ -16,11 +16,14 @@ MXC_OPTIMIZE_CFLAGS = -Os
 # This example is only compatible with the FTHR board,
 # so we override the BOARD value to hard-set it.
 override BOARD=FTHR_RevA
+MFLOAT_ABI=soft
 
 IPATH+=../deployment
 IPATH+=inc/
 VPATH+=src/
 
+#PROJ_CFLAGS+=-Wall -Wextra -s -fomit-frame-pointer -fno-unwind-tables -fno-asynchronous-unwind-tables -fno-math-errno -fno-ident -ffast-math -nostdlib -nostdinc++
+PROJ_CFLAGS+=-Wall -s -fomit-frame-pointer -fno-unwind-tables -fno-asynchronous-unwind-tables -fno-math-errno -fno-ident -ffast-math -nostdlib -nostdinc++
 # ****************** eCTF Bootloader *******************
 # DO NOT REMOVE
 LINKERFILE=firmware.ld
