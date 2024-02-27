@@ -26,8 +26,11 @@
 #include "simple_flash.h"
 #include "simple_i2c_controller.h"
 
+#include "tinycrypt/aes.h"
+#include "tinycrypt/ctr_mode.h"
 #include "tinycrypt/ecc.h"
 #include "tinycrypt/ecc_dh.h"
+#include "tinycrypt/hmac.h"
 #include "tinycrypt/sha256.h"
 
 #ifdef POST_BOOT
@@ -55,13 +58,14 @@ struct flash_entry_t {
 // Variable for information stored in flash memory
 flash_entry_t flash_status;
 
-uint8_t shared_secret[32][COMPONENT_CNT] = {};
-uint8_t private_key[32][COMPONENT_CNT] = {};
-uint8_t public_key[64][COMPONENT_CNT] = {};
+uint8_t shared_secrets[32][COMPONENT_CNT] = {};
+uint8_t private_keys[32][COMPONENT_CNT] = {};
+uint8_t public_keys[64][COMPONENT_CNT] = {};
+uint32_t nonces[COMPONENT_CNT] = {};
 
-static inline uint8_t cid_to_idx(const uint32_t component_id) {
+static inline uint8_t cid_to_idx(const i2c_addr_t id) {
     for (uint8_t i = 0; i < COMPONENT_CNT; ++i) {
-        if (flash_status.component_ids[i] == component_id) {
+        if (component_id_to_i2c_addr(flash_status.component_ids[i]) == id) {
             return i;
         }
     }
@@ -84,8 +88,17 @@ static inline uint8_t cid_to_idx(const uint32_t component_id) {
 int secure_send(const uint8_t address, const uint8_t *const buffer,
                 const uint8_t len) {
     // TODO: Andrew, implement secure_send
-    packet_t<packet_type_t::SECURE> tx_packet;
+    packet_t<packet_type_t::SECURE> tx_packet = {};
     tx_packet.header.magic = packet_magic_t::ENCRYPTED;
+    tx_packet.payload.magic = static_cast<uint8_t>(packet_magic_t::DECRYPTED);
+    tx_packet.payload.len = len;
+
+    const uint8_t index = cid_to_idx(address);
+    if (index == 0xFF) {
+        return -1;
+    }
+    tx_packet.payload.nonce = nonces[index];
+    memcpy(tx_packet.payload.data, buffer, len);
     tx_packet.header.checksum = 0;
 
     const packet_t<packet_type_t::SECURE> rx_packet =
@@ -115,7 +128,7 @@ int secure_send(const uint8_t address, const uint8_t *const buffer,
  */
 int secure_receive(const i2c_addr_t address, const uint8_t *const buffer) {
     // TODO: Andrew, implement secure_receive
-    packet_t<packet_type_t::SECURE> tx_packet;
+    packet_t<packet_type_t::SECURE> tx_packet = {};
     tx_packet.header.magic = packet_magic_t::ENCRYPTED;
     tx_packet.header.checksum = 0;
 
@@ -192,7 +205,7 @@ static error_t list_components() {
             continue;
         }
 
-        packet_t<packet_type_t::LIST_COMMAND> tx_packet;
+        packet_t<packet_type_t::LIST_COMMAND> tx_packet = {};
         tx_packet.header.magic = packet_magic_t::LIST;
         tx_packet.payload.len = 0x00;
 
@@ -289,7 +302,7 @@ static error_t boot_components() {
 static error_t attest_component(const uint32_t component_id) {
     const i2c_addr_t addr = component_id_to_i2c_addr(component_id);
 
-    packet_t<packet_type_t::ATTEST_COMMAND> tx_packet;
+    packet_t<packet_type_t::ATTEST_COMMAND> tx_packet = {};
     tx_packet.header.magic = packet_magic_t::ATTEST;
     tx_packet.payload.len = 0x06;
 
@@ -343,20 +356,20 @@ static error_t attest_component(const uint32_t component_id) {
 }
 
 static void perform_kex(const uint8_t addr, const uint8_t component_idx) {
-    packet_t<packet_type_t::KEX> tx_packet;
+    packet_t<packet_type_t::KEX> tx_packet = {};
     tx_packet.header.magic = packet_magic_t::KEX;
     tx_packet.payload.len = 0x60;
 
-    uECC_make_key(public_key[component_idx], private_key[component_idx],
+    uECC_make_key(public_keys[component_idx], private_keys[component_idx],
                   uECC_secp256r1());
 
     uint8_t hash[32] = {};
     TCSha256State_t sha256_ctx = {};
     tc_sha256_init(sha256_ctx);
-    tc_sha256_update(sha256_ctx, public_key[component_idx], 0x40);
+    tc_sha256_update(sha256_ctx, public_keys[component_idx], 0x40);
     tc_sha256_final(hash, sha256_ctx);
 
-    memcpy(tx_packet.payload.material, public_key[component_idx], 0x40);
+    memcpy(tx_packet.payload.material, public_keys[component_idx], 0x40);
     memcpy(tx_packet.payload.hash, hash, 0x20);
 
     tx_packet.header.checksum =
@@ -394,8 +407,8 @@ static void perform_kex(const uint8_t addr, const uint8_t component_idx) {
         print_error("Could not perform key exchange\n");
         return;
     }
-    uECC_shared_secret(rx_packet.payload.material, private_key[component_idx],
-                       shared_secret[component_idx], uECC_secp256r1());
+    uECC_shared_secret(rx_packet.payload.material, private_keys[component_idx],
+                       shared_secrets[component_idx], uECC_secp256r1());
 }
 
 // Boot sequence

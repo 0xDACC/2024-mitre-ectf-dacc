@@ -24,9 +24,12 @@ error_t i2c_simple_peripheral_init(const uint8_t addr, const i2c_cb_t cb) {
 
     error = MXC_I2C_Init(MXC_I2C1, false, addr);
     if (error != E_NO_ERROR) {
-        printf("Failed to initialize I2C.\n");
+        printf("Failed to initialize I2C. %d\n", error);
         return error_t::ERROR;
+    } else {
+        printf("I2C initialized\n");
     }
+    fflush(stdout);
 
     MXC_I2C_SetFrequency(MXC_I2C1, I2C_FREQ);
     MXC_I2C_SetClockStretching(MXC_I2C1, 1);
@@ -45,6 +48,7 @@ error_t i2c_simple_peripheral_init(const uint8_t addr, const i2c_cb_t cb) {
 }
 
 void i2c_simple_isr() {
+    printf("Inside ISR");
     uint8_t buf[8] = {};
     uint32_t len = 0;
 
@@ -53,7 +57,6 @@ void i2c_simple_isr() {
 
     if ((flags & MXC_F_I2C_INTFL0_STOP) != 0) {
         // Transaction ended
-
         const uint8_t available = MXC_I2C_GetRXFIFOAvailable(MXC_I2C1);
         const uint8_t size = handler->get_rx_size(available);
         len += MXC_I2C_ReadRXFIFO(MXC_I2C1, buf, size);
@@ -62,8 +65,12 @@ void i2c_simple_isr() {
         MXC_I2C_DisableInt(MXC_I2C1, MXC_F_I2C_INTEN0_RX_THD, 0);
         MXC_I2C_DisableInt(MXC_I2C1, MXC_F_I2C_INTEN0_TX_THD, 0);
 
-        MXC_I2C_ClearRXFIFO(MXC_I2C1);
-        MXC_I2C_ClearTXFIFO(MXC_I2C1);
+        if (MXC_I2C_GetRXFIFOAvailable(MXC_I2C1) != 0) {
+            MXC_I2C_ClearRXFIFO(MXC_I2C1);
+        }
+        if (MXC_I2C_GetTXFIFOAvailable(MXC_I2C1) != 8) {
+            MXC_I2C_ClearTXFIFO(MXC_I2C1);
+        }
 
         // Reset state
         handler->clear_rxcnt();

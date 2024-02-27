@@ -145,6 +145,7 @@ static void boot() {
 // Handle a transaction from the AP
 static error_t component_process_cmd(const uint8_t *const data,
                                      const uint32_t len) {
+    printf("Processing command\n");
     if (data == nullptr || len < 5) {
         return error_t::ERROR;
     }
@@ -169,6 +170,7 @@ static error_t component_process_cmd(const uint8_t *const data,
 }
 
 static void process_boot(const uint8_t *const data, const uint32_t len) {
+    printf("Processing BOOT\n");
     if (len < 75) {
         // Invalid packet length
         return;
@@ -212,6 +214,7 @@ static void process_boot(const uint8_t *const data, const uint32_t len) {
 }
 
 static void process_list(const uint8_t *const data, const uint32_t len) {
+    printf("Processing LIST\n");
     if (len < 6) {
         // Invalid packet length
         return;
@@ -246,6 +249,7 @@ static void process_list(const uint8_t *const data, const uint32_t len) {
 }
 
 static void process_validate(const uint8_t *const data, const uint32_t len) {
+    printf("Processing VALIDATE\n");
     // This is the signing part (all systems valid on page 5)
 
     // TODO: Tyler, implement packet checks and signature algorithms
@@ -253,6 +257,7 @@ static void process_validate(const uint8_t *const data, const uint32_t len) {
 }
 
 static void process_attest(const uint8_t *const data, const uint32_t len) {
+    printf("Processing ATTEST\n");
     if (len < 77) {
         // Invalid packet length
         return;
@@ -298,6 +303,7 @@ static void process_attest(const uint8_t *const data, const uint32_t len) {
 }
 
 static void process_kex(const uint8_t *const data, const uint32_t len) {
+    printf("Processing KEX\n");
     if (len < 102) {
         // Invalid packet length
         return;

@@ -21,7 +21,7 @@ def gen_boot_keypair_A() -> tuple[bytes, bytes]:
     )
     return key.private_numbers().private_value.to_bytes(
         32, "big"
-    ), key.public_key().public_bytes(Encoding.X962, PublicFormat.CompressedPoint)
+    ), key.public_key().public_bytes(Encoding.X962, PublicFormat.UncompressedPoint)[1:]
 
 
 def gen_boot_keypair_C() -> tuple[bytes, bytes]:
@@ -35,7 +35,7 @@ def gen_boot_keypair_C() -> tuple[bytes, bytes]:
     )
     return key.private_numbers().private_value.to_bytes(
         32, "big"
-    ), key.public_key().public_bytes(Encoding.X962, PublicFormat.CompressedPoint)
+    ), key.public_key().public_bytes(Encoding.X962, PublicFormat.UncompressedPoint)[1:]
 
 
 def gen_replacement_keypair() -> tuple[bytes, bytes]:
@@ -49,7 +49,7 @@ def gen_replacement_keypair() -> tuple[bytes, bytes]:
     )
     return key.private_numbers().private_value.to_bytes(
         32, "big"
-    ), key.public_key().public_bytes(Encoding.X962, PublicFormat.CompressedPoint)
+    ), key.public_key().public_bytes(Encoding.X962, PublicFormat.UncompressedPoint)[1:]
 
 
 def write(type: str, name: str, values: list[str]) -> None:
