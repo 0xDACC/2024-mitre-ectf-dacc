@@ -310,9 +310,9 @@ Packet Magic & Checksum & Payload Magic & Length - 1 & Nonce & Data & HMAC\tabul
 \hline 
 Packet Magic & Checksum & Length & Key Material & Key Hash\tabularnewline
 \hline 
-(1 byte) & (4 bytes) & (1 byte) & (32 bytes) & (32 bytes)\tabularnewline
+(1 byte) & (4 bytes) & (1 byte) & (64 bytes) & (32 bytes)\tabularnewline
 \hline 
-0x4A or 0x4B &  & 0x40 &  & \tabularnewline
+0x4B &  & 0x60 &  & \tabularnewline
 \hline 
 \end{tabular}\caption{Key Exchange I2C Packet}
 \end{table}

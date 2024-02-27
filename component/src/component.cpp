@@ -15,13 +15,20 @@
 #include "mxc_delay.h"
 #include "mxc_errors.h"
 #include "nvic_table.h"
+
 #include <stdbool.h>
 #include <stdio.h>
 #include <string.h>
 
+#include "crc32.h"
 #include "errors.h"
 #include "packets.h"
+#include "random.h"
 #include "simple_i2c_peripheral.h"
+
+#include "tinycrypt/ecc.h"
+#include "tinycrypt/ecc_dh.h"
+#include "tinycrypt/sha256.h"
 
 // Includes from containerized build
 #include "ectf_params_secure.h"
@@ -35,14 +42,20 @@
 #endif
 
 // Core function definitions
-static mitre_error_t component_process_cmd(const uint8_t *const data,
-                                           const uint32_t len);
+static error_t component_process_cmd(const uint8_t *const data,
+                                     const uint32_t len);
 static void process_boot(const uint8_t *const data, const uint32_t len);
 static void process_list(const uint8_t *const data, const uint32_t len);
 static void process_validate(const uint8_t *const data, const uint32_t len);
 static void process_attest(const uint8_t *const data, const uint32_t len);
+static void process_kex(const uint8_t *const data, const uint32_t len);
+
 enum class state_t { PREBOOT, POSTBOST };
-static volatile state_t state = state_t::PREBOOT;
+volatile state_t state = state_t::PREBOOT;
+
+uint8_t shared_secret[32];
+uint8_t private_key[32];
+uint8_t public_key[64];
 
 using namespace i2c;
 
@@ -130,10 +143,10 @@ static void boot() {
 }
 
 // Handle a transaction from the AP
-static mitre_error_t component_process_cmd(const uint8_t *const data,
-                                           const uint32_t len) {
+static error_t component_process_cmd(const uint8_t *const data,
+                                     const uint32_t len) {
     if (data == nullptr || len < 5) {
-        return mitre_error_t::ERROR;
+        return error_t::ERROR;
     }
     switch (static_cast<packet_magic_t>(data[0])) {
     case packet_magic_t::ATTEST:
@@ -142,17 +155,17 @@ static mitre_error_t component_process_cmd(const uint8_t *const data,
     case packet_magic_t::BOOT:
         process_boot(data, len);
         break;
-    case packet_magic_t::KEX_P1:
-        // Do KEX
+    case packet_magic_t::KEX:
+        process_kex(data, len);
         break;
     case packet_magic_t::LIST:
         process_list(data, len);
         break;
     default:
         printf("Error: Unrecognized command received %d\n", data[0]);
-        return mitre_error_t::ERROR;
+        return error_t::ERROR;
     }
-    return mitre_error_t::SUCCESS;
+    return error_t::SUCCESS;
 }
 
 static void process_boot(const uint8_t *const data, const uint32_t len) {
@@ -163,12 +176,13 @@ static void process_boot(const uint8_t *const data, const uint32_t len) {
 
     packet_t<packet_type_t::BOOT_COMMAND> rx_packet;
     rx_packet.header.magic = packet_magic_t::LIST;
-    rx_packet.header.checksum = *reinterpret_cast<const uint32_t *>(&data[1]);
 
+    memcpy(&rx_packet.header.checksum, &data[1], 0x04);
     memcpy(&rx_packet.payload, &data[5], len - 5);
 
-    if (rx_packet.header.checksum != 0) {
-        // TODO: Andrew, add checksum
+    const uint32_t expected_checksum =
+        calc_checksum(&rx_packet.payload, sizeof(rx_packet.payload));
+    if (rx_packet.header.checksum != expected_checksum) {
         // Checksum failed
         return;
     } else if (rx_packet.payload.len != 0x04) {
@@ -185,14 +199,13 @@ static void process_boot(const uint8_t *const data, const uint32_t len) {
 
     packet_t<packet_type_t::BOOT_ACK> tx_packet;
     tx_packet.header.magic = packet_magic_t::BOOT_ACK;
-    // TODO: Andrew, Add checksum
-    tx_packet.header.checksum = 0;
     tx_packet.payload.len = 0x40;
-
     memcpy(tx_packet.payload.data, COMPONENT_BOOT_MSG, 0x40);
 
     // tx_packet.payload.sig = 0;
     // TODO: Tyler, implement signature algorithm here
+    tx_packet.header.checksum =
+        calc_checksum(&tx_packet.payload, sizeof(tx_packet.payload));
 
     handler->send_packet<packet_type_t::BOOT_ACK>(tx_packet);
     state = state_t::POSTBOST;
@@ -210,8 +223,9 @@ static void process_list(const uint8_t *const data, const uint32_t len) {
     memcpy(&rx_packet.header.checksum, &data[1], 0x04);
     memcpy(&rx_packet.payload, &data[5], len - 5);
 
-    if (rx_packet.header.checksum != 0) {
-        // TODO: Andrew, add checksum
+    const uint32_t expected_checksum =
+        calc_checksum(&rx_packet.payload, sizeof(rx_packet.payload));
+    if (rx_packet.header.checksum != expected_checksum) {
         // Checksum failed
         return;
     } else if (rx_packet.payload.len != 0x00) {
@@ -221,11 +235,12 @@ static void process_list(const uint8_t *const data, const uint32_t len) {
 
     packet_t<packet_type_t::LIST_ACK> tx_packet;
     tx_packet.header.magic = packet_magic_t::LIST_ACK;
-    // TODO: Andrew, add checksum
-    tx_packet.header.checksum = 0;
     tx_packet.payload.len = 0x04;
 
     memcpy(tx_packet.payload.data, &COMPONENT_ID, 0x04);
+
+    tx_packet.header.checksum =
+        calc_checksum(&tx_packet.payload, sizeof(tx_packet.payload));
 
     handler->send_packet<packet_type_t::LIST_ACK>(tx_packet);
 }
@@ -245,12 +260,13 @@ static void process_attest(const uint8_t *const data, const uint32_t len) {
 
     packet_t<packet_type_t::ATTEST_COMMAND> rx_packet;
     rx_packet.header.magic = packet_magic_t::ATTEST;
-    rx_packet.header.checksum = *reinterpret_cast<const uint32_t *>(&data[1]);
 
+    memcpy(&rx_packet.header.checksum, &data[1], 0x04);
     memcpy(&rx_packet.payload, &data[5], len - 5);
 
-    if (rx_packet.header.checksum != 0) {
-        // TODO: Andrew, add checksum
+    const uint32_t expected_checksum =
+        calc_checksum(&rx_packet.payload, sizeof(rx_packet.payload));
+    if (rx_packet.header.checksum != expected_checksum) {
         // Checksum failed
         return;
     } else if (rx_packet.payload.len != 0x6) {
@@ -267,8 +283,6 @@ static void process_attest(const uint8_t *const data, const uint32_t len) {
 
     packet_t<packet_type_t::ATTEST_ACK> tx_packet;
     tx_packet.header.magic = packet_magic_t::ATTEST_ACK;
-    // TODO: Andrew Add checksum
-    tx_packet.header.checksum = 0;
     tx_packet.payload.len = 0xC0;
 
     memcpy(tx_packet.payload.data, ATTEST_LOC_ENC, 0x40);
@@ -278,7 +292,67 @@ static void process_attest(const uint8_t *const data, const uint32_t len) {
     // tx_packet.payload.sig = 0;
     // TODO: Henry and David, implement signature algorithm here
 
+    tx_packet.header.checksum =
+        calc_checksum(&tx_packet.payload, sizeof(tx_packet.payload));
     handler->send_packet<packet_type_t::ATTEST_ACK>(tx_packet);
+}
+
+static void process_kex(const uint8_t *const data, const uint32_t len) {
+    if (len < 102) {
+        // Invalid packet length
+        return;
+    }
+
+    packet_t<packet_type_t::KEX> rx_packet;
+    rx_packet.header.magic = static_cast<packet_magic_t>(data[0]);
+
+    memcpy(&rx_packet.header.checksum, &data[1], 0x04);
+    memcpy(&rx_packet.payload, &data[5], len - 5);
+
+    const uint32_t expected_checksum =
+        calc_checksum(&rx_packet.payload, sizeof(rx_packet.payload));
+    TCSha256State_t sha256_ctx = {};
+
+    uint8_t expected_hash[32] = {};
+    tc_sha256_init(sha256_ctx);
+    tc_sha256_update(sha256_ctx, rx_packet.payload.material,
+                     sizeof(rx_packet.payload.material));
+    tc_sha256_final(expected_hash, sha256_ctx);
+
+    if (rx_packet.header.checksum != expected_checksum) {
+        // Checksum failed
+        return;
+    } else if (rx_packet.payload.len != 0x60) {
+        // Invalid payload length
+        return;
+    } else if (uECC_valid_public_key(rx_packet.payload.material,
+                                     uECC_secp256r1()) < 0) {
+        // Invalid public key
+        return;
+    } else if (memcmp(rx_packet.payload.hash, expected_hash, 0x20) != 0) {
+        // Invalid hash
+        return;
+    }
+
+    uECC_make_key(public_key, private_key, uECC_secp256r1());
+    uECC_shared_secret(rx_packet.payload.material, private_key, shared_secret,
+                       uECC_secp256r1());
+
+    packet_t<packet_type_t::KEX> tx_packet;
+    tx_packet.header.magic = packet_magic_t::KEX;
+    tx_packet.payload.len = 0x40;
+    uECC_compute_public_key(private_key, rx_packet.payload.material,
+                            uECC_secp256r1());
+
+    sha256_ctx = {};
+    tc_sha256_init(sha256_ctx);
+    tc_sha256_update(sha256_ctx, tx_packet.payload.material,
+                     sizeof(tx_packet.payload.material));
+    tc_sha256_final(tx_packet.payload.hash, sha256_ctx);
+
+    tx_packet.header.checksum =
+        calc_checksum(&tx_packet.payload, sizeof(tx_packet.payload));
+    handler->send_packet(tx_packet);
 }
 
 int main() {
@@ -290,8 +364,12 @@ int main() {
     // Initialize Component
     i2c_addr_t addr = component_id_to_i2c_addr(COMPONENT_ID);
     if (i2c_simple_peripheral_init(addr, component_process_cmd) !=
-        mitre_error_t::SUCCESS) {
+        error_t::SUCCESS) {
         printf("Failed to initialize I2C peripheral.\n");
+        return -1;
+    }
+    if (random_init() != error_t::SUCCESS) {
+        printf("Failed to initialize random number generator.\n");
         return -1;
     }
 

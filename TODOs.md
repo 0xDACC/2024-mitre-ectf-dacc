@@ -2,7 +2,9 @@
 
 ## List
 
-- [ ] None (Doesn't need to be secure but also needs to not introduce any vulnerabilities)
+### NOTE: Investigate why testing is failing here
+
+- [X] None (Doesn't need to be secure but also needs to not introduce any vulnerabilities)
 - [ ] Must take <3s
 - [ ] Completed All Objectives
 
@@ -43,9 +45,9 @@
 
 ## Secure Send & Receive (Andrew)
 
-- [ ] ECDHE Encryption Scheme
+- [X] ECDHE Encryption Scheme
 - [ ] Encrypt all packets with AES-128-CTR mode
-- [ ] Derive Private Key randomly
+- [X] Derive Private Key randomly
 - [ ] SHA256 ECDH Shared Secret
 - [ ] First 16 bytes of hash as AES key, Next 8 as IV
 - [ ] Negotiate HMAC key over encrypted channel

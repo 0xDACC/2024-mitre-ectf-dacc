@@ -2187,7 +2187,7 @@ Payload Magic
 \begin_inset Text
 
 \begin_layout Plain Layout
-Length
+Length - 1
 \end_layout
 
 \end_inset
@@ -2270,7 +2270,7 @@ HMAC
 \begin_inset Text
 
 \begin_layout Plain Layout
-(255 bytes)
+(256 bytes)
 \end_layout
 
 \end_inset
