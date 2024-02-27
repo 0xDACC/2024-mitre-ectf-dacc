@@ -62,8 +62,6 @@
 int default_CSPRNG(uint8_t *dest, unsigned int size) {
 	/* input sanity check: */
 	if (dest == (uint8_t *)0 || (size <= 0)) return 0;
-	if (MXC_TRNG_Init() != E_NO_ERROR) { return 0; }
 	if (MXC_TRNG_Random(dest, size) != E_NO_ERROR) { return 0; }
-	if (MXC_TRNG_Shutdown() != E_NO_ERROR) { return 0; }
 	return 1;
 }
