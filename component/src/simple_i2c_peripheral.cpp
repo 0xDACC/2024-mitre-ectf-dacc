@@ -29,7 +29,6 @@ error_t i2c_simple_peripheral_init(const uint8_t addr, const i2c_cb_t cb) {
     } else {
         printf("I2C initialized\n");
     }
-    fflush(stdout);
 
     MXC_I2C_SetFrequency(MXC_I2C1, I2C_FREQ);
     MXC_I2C_SetClockStretching(MXC_I2C1, 1);
