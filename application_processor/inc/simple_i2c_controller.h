@@ -40,15 +40,19 @@ error_t i2c_simple_controller_init();
  */
 template <packet_type_t R, packet_type_t T>
 packet_t<R> send_i2c_master_tx(const i2c_addr_t addr, packet_t<T> packet) {
-    uint8_t *const in = reinterpret_cast<uint8_t *>(&packet);
     uint8_t rxbuf[299] = {};
+    uint8_t txbuf[299] = {};
     packet_t<R> rx_packet = {};
+
+    memcpy(&txbuf[0], &packet.header.magic, sizeof(packet_magic_t));
+    memcpy(&txbuf[1], &packet.header.checksum, sizeof(uint32_t));
+    memcpy(&txbuf[5], &packet.payload, sizeof(payload_t<T>));
 
     mxc_i2c_req_t request;
     request.i2c = MXC_I2C1;
     request.addr = addr;
     request.tx_len = sizeof(packet_t<T>);
-    request.tx_buf = in;
+    request.tx_buf = txbuf;
     request.rx_len = sizeof(packet_t<R>);
     request.rx_buf = rxbuf;
     request.restart = 0;
@@ -56,7 +60,7 @@ packet_t<R> send_i2c_master_tx(const i2c_addr_t addr, packet_t<T> packet) {
 
     if (MXC_I2C_MasterTransaction(&request) == E_NO_ERROR) {
         rx_packet.header.magic = static_cast<packet_magic_t>(rxbuf[0]);
-        rx_packet.header.checksum = *reinterpret_cast<uint32_t *>(&rxbuf[1]);
+        memcpy(&rx_packet.header.checksum, &rxbuf[1], sizeof(uint32_t));
         memcpy(&rx_packet.payload, &rxbuf[5], sizeof(payload_t<R>));
         return rx_packet;
     } else {

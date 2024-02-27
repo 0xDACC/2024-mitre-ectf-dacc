@@ -18,8 +18,7 @@
 namespace i2c {
 I2C_Handler *handler = nullptr;
 
-error_t i2c_simple_peripheral_init(const uint8_t addr,
-                                         const i2c_cb_t cb) {
+error_t i2c_simple_peripheral_init(const uint8_t addr, const i2c_cb_t cb) {
     int error = 0;
     handler = new I2C_Handler(cb);
 
@@ -45,7 +44,7 @@ error_t i2c_simple_peripheral_init(const uint8_t addr,
     return error_t::SUCCESS;
 }
 
-static void i2c_simple_isr() {
+void i2c_simple_isr() {
     uint8_t buf[8] = {};
     uint32_t len = 0;
 
@@ -71,7 +70,6 @@ static void i2c_simple_isr() {
         handler->clear_txcnt();
 
         MXC_I2C_ClearFlags(MXC_I2C1, MXC_F_I2C_INTFL0_STOP, 0);
-
     }
 
     if ((flags & MXC_F_I2C_INTEN0_TX_THD) != 0 &&

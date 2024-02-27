@@ -67,6 +67,7 @@ static inline uint8_t cid_to_idx(const uint32_t component_id) {
     }
     return 0xFF;
 }
+
 /**
  * @brief Secure Send
  *
@@ -154,13 +155,11 @@ static error_t init() {
     // Enable global interrupts
     __enable_irq();
 
-    // Setup Flash
     flash_simple_init();
+    random_init();
 
-    // Test application has been booted before
     flash_simple_read(FLASH_ADDR, &flash_status, sizeof(flash_entry_t));
 
-    // Write Component IDs from flash if first boot e.g. flash unwritten
     if (flash_status.flash_magic != FLASH_MAGIC) {
         print_debug("First boot, setting flash!\n");
 
@@ -189,8 +188,6 @@ static error_t list_components() {
     }
 
     for (i2c_addr_t addr = 0x8; addr < 0x78; ++addr) {
-        // I2C Blacklist:
-        // 0x18, 0x28, and 0x36 conflict with separate devices on MAX78000FTHR
         if (addr == 0x18 || addr == 0x28 || addr == 0x36) {
             continue;
         }
