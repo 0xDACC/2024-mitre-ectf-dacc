@@ -20,7 +20,10 @@ MFLOAT_ABI=soft
 
 IPATH+=../deployment
 IPATH+=inc/
+IPATH+=../lib/tinycrypt/include
 VPATH+=src/
+VPATH+=../lib/tinycrypt/src
+
 
 #PROJ_CFLAGS+=-Wall -Wextra -s -fomit-frame-pointer -fno-unwind-tables -fno-asynchronous-unwind-tables -fno-math-errno -fno-ident -ffast-math -nostdlib -nostdinc++
 PROJ_CFLAGS+=-Wall -s -fomit-frame-pointer -fno-unwind-tables -fno-asynchronous-unwind-tables -fno-math-errno -fno-ident -ffast-math -nostdlib -nostdinc++
