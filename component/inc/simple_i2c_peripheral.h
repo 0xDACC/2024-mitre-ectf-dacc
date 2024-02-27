@@ -32,7 +32,7 @@ using i2c_cb_t = error_t (*)(const uint8_t *const data,
  * peripheral Transactions are able to begin immediately after a transaction
  * ends
  */
-static void i2c_simple_isr();
+void i2c_simple_isr();
 
 /**
  * @brief Initialize the I2C Connection
