@@ -9,8 +9,8 @@
  *
  */
 
-#ifndef __HOST_MESSAGING__
-#define __HOST_MESSAGING__
+#ifndef HOST_MESSAGING
+#define HOST_MESSAGING
 
 #include <stdarg.h>
 #include <stddef.h>

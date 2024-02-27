@@ -27,7 +27,7 @@ using i2c_addr_t = uint8_t;
  * @brief Initialize the I2C Connection
  *
  */
-mitre_error_t i2c_simple_controller_init();
+error_t i2c_simple_controller_init();
 
 /**
  * @brief Perform an I2C Transaction

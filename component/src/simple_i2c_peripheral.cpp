@@ -18,7 +18,7 @@
 namespace i2c {
 I2C_Handler *handler = nullptr;
 
-mitre_error_t i2c_simple_peripheral_init(const uint8_t addr,
+error_t i2c_simple_peripheral_init(const uint8_t addr,
                                          const i2c_cb_t cb) {
     int error = 0;
     handler = new I2C_Handler(cb);
@@ -26,7 +26,7 @@ mitre_error_t i2c_simple_peripheral_init(const uint8_t addr,
     error = MXC_I2C_Init(MXC_I2C1, false, addr);
     if (error != E_NO_ERROR) {
         printf("Failed to initialize I2C.\n");
-        return mitre_error_t::ERROR;
+        return error_t::ERROR;
     }
 
     MXC_I2C_SetFrequency(MXC_I2C1, I2C_FREQ);
@@ -42,7 +42,7 @@ mitre_error_t i2c_simple_peripheral_init(const uint8_t addr,
 
     MXC_I2C_ClearFlags(MXC_I2C1, 0xFFFFFFFFU, 0xFFFFFFFFU);
 
-    return mitre_error_t::SUCCESS;
+    return error_t::SUCCESS;
 }
 
 static void i2c_simple_isr() {
@@ -95,7 +95,7 @@ static void i2c_simple_isr() {
 
     if ((flags & MXC_F_I2C_INTFL0_WR_ADDR_MATCH) != 0) {
         // Master requested a read from us
-        if (handler->call_processing_callback() != mitre_error_t::SUCCESS) {
+        if (handler->call_processing_callback() != error_t::SUCCESS) {
             return;
         }
 

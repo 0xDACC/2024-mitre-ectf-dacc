@@ -8,8 +8,8 @@
  * @copyright Copyright (c) 2024
  *
  */
-#ifndef __PACKETS__
-#define __PACKETS__
+#ifndef PACKETS
+#define PACKETS
 
 #include <stdint.h>
 
@@ -19,8 +19,7 @@
  */
 enum class packet_magic_t : uint8_t {
     ERROR = 0x00,
-    KEX_P1 = 0x4A,
-    KEX_P2 = 0x4B,
+    KEX = 0x4B,
     LIST = 0x4C,
     LIST_ACK = 0x4D,
     ATTEST = 0xAA,
@@ -119,7 +118,7 @@ template <> struct __packed payload_t<packet_type_t::SECURE> {
  */
 template <> struct __packed payload_t<packet_type_t::KEX> {
     uint8_t len;
-    uint8_t material[32];
+    uint8_t material[64];
     uint8_t hash[32];
 };
 

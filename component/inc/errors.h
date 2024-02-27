@@ -8,12 +8,12 @@
  * @copyright Copyright (c) 2024
  *
  */
-#ifndef __ERRORS__
-#define __ERRORS__
+#ifndef ERRORS
+#define ERRORS
 
 #include <stdint.h>
 
-enum class mitre_error_t {
+enum class error_t {
     SUCCESS = 0,
     ERROR = 1,
 };

@@ -22,7 +22,7 @@ namespace i2c {
 constexpr const uint32_t I2C_FREQ = 100000;
 
 using i2c_addr_t = uint8_t;
-using i2c_cb_t = mitre_error_t (*)(const uint8_t *const data,
+using i2c_cb_t = error_t (*)(const uint8_t *const data,
                                    const uint32_t len);
 
 /**
@@ -40,7 +40,7 @@ static void i2c_simple_isr();
  * @param addr I2C Address
  * @param cb Callback function for processing received data
  */
-mitre_error_t i2c_simple_peripheral_init(uint8_t addr, i2c_cb_t cb);
+error_t i2c_simple_peripheral_init(uint8_t addr, i2c_cb_t cb);
 
 /**
  * @brief Convert 4-byte component ID to I2C address
@@ -156,9 +156,9 @@ class I2C_Handler {
      * @return mitre_error_t Whether the callback was successful
      *
      */
-    mitre_error_t call_processing_callback() const {
+    error_t call_processing_callback() const {
         if (processing_cb == nullptr) {
-            return mitre_error_t::SUCCESS;
+            return error_t::SUCCESS;
         }
         return processing_cb(rxbuf, rxcnt);
     }
