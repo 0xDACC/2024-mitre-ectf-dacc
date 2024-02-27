@@ -68,7 +68,7 @@ error_t flash_simple_write(const uint32_t address, T *const buffer,
     MXC_ICC_Disable(MXC_ICC0);
     MXC_SYS_Crit_Enter();
     ret =
-        MXC_FLC_Write(address, size, reinterpret_cast_cast<uint32_t *>(buffer));
+        MXC_FLC_Write(address, size, reinterpret_cast<uint32_t *>(buffer));
     MXC_SYS_Crit_Exit();
     MXC_ICC_Enable(MXC_ICC0);
     return ret == E_NO_ERROR ? error_t::SUCCESS : error_t::ERROR;
