@@ -1,20 +1,20 @@
 /**
- * @file "simple_flash.h"
- * @author Frederich Stine
- * @brief Simple Flash Interface Header
- * @date 2024
+ * @file simple_flash.h
+ * @author Andrew Langan (alangan444@icloud.com)
+ * @brief Safer simple flash interface
+ * @version 0.1
+ * @date 2024-02-26
  *
- * This source file is part of an example system for MITRE's 2024 Embedded
- * System CTF (eCTF). This code is being provided only for educational purposes
- * for the 2024 MITRE eCTF competition, and may not meet MITRE standards for
- * quality. Use this code at your own risk!
+ * @copyright Copyright (c) 2024
  *
- * @copyright Copyright (c) 2024 The MITRE Corporation
  */
 
-#ifndef __SIMPLE_FLASH__
-#define __SIMPLE_FLASH__
+#ifndef SIMPLE_FLASH
+#define SIMPLE_FLASH
 
+#include "errors.h"
+#include "flc.h"
+#include "icc.h"
 #include <stdint.h>
 
 /**
@@ -23,45 +23,54 @@
  * This function registers the interrupt for the flash system,
  * enables the interrupt, and disables ICC
  */
-void flash_simple_init(void);
+void flash_simple_init();
+
 /**
  * @brief Flash Simple Erase Page
  *
- * @param address: uint32_t, address of flash page to erase
- *
- * @return int: return negative if failure, zero if success
- *
- * This function erases a page of flash such that it can be updated.
- * Flash memory can only be erased in a large block size called a page.
- * Once erased, memory can only be written one way e.g. 1->0.
- * In order to be re-written the entire page must be erased.
+ * @param address Address of flash page to erase
+ * @return error_t Whether the erase was successful
  */
-int flash_simple_erase_page(uint32_t address);
+error_t flash_simple_erase_page(const uint32_t address);
+
 /**
  * @brief Flash Simple Read
  *
- * @param address: uint32_t, address of flash page to read
- * @param buffer: uint32_t*, pointer to buffer for data to be read into
- * @param size: uint32_t, number of bytes to read from flash
- *
- * This function reads data from the specified flash page into the buffer
- * with the specified amount of bytes
+ * @tparam T Type of buffer
+ * @param address Address to read from
+ * @param buffer Buffer to read into
+ * @param size Size of buffer
  */
-void flash_simple_read(uint32_t address, uint32_t *buffer, uint32_t size);
+template <typename T>
+void flash_simple_read(const uint32_t address, T *const buffer,
+                       const uint32_t size) {
+    MXC_ICC_Disable(MXC_ICC0);
+    MXC_SYS_Crit_Enter();
+    MXC_FLC_Read(address, buffer, size);
+    MXC_SYS_Crit_Exit();
+    MXC_ICC_Enable(MXC_ICC0);
+}
+
 /**
  * @brief Flash Simple Write
  *
- * @param address: uint32_t, address of flash page to write
- * @param buffer: uint32_t*, pointer to buffer to write data from
- * @param size: uint32_t, number of bytes to write from flash
- *
- * @return int: return negative if failure, zero if success
- *
- * This function writes data to the specified flash page from the buffer passed
- * with the specified amount of bytes. Flash memory can only be written in one
- * way e.g. 1->0. To rewrite previously written memory see the
- * flash_simple_erase_page documentation.
+ * @tparam T Type of buffer
+ * @param address Address to write to
+ * @param buffer Buffer to write from
+ * @param size Size of buffer
+ * @return error_t Whether the write was successful
  */
-int flash_simple_write(uint32_t address, uint32_t *buffer, uint32_t size);
 
-#endif
+template <typename T>
+error_t flash_simple_write(const uint32_t address, T *const buffer,
+                           const uint32_t size) {
+    int ret;
+    MXC_ICC_Disable(MXC_ICC0);
+    MXC_SYS_Crit_Enter();
+    ret = MXC_FLC_Write(address, size, buffer);
+    MXC_SYS_Crit_Exit();
+    MXC_ICC_Enable(MXC_ICC0);
+    return ret == E_NO_ERROR ? error_t::SUCCESS : error_t::ERROR;
+}
+
+#endif /* SIMPLE_FLASH */

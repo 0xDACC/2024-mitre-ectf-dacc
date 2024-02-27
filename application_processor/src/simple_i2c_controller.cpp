@@ -15,16 +15,16 @@
 #include "packets.h"
 
 namespace i2c {
-mitre_error_t i2c_simple_controller_init() {
+error_t i2c_simple_controller_init() {
 
     // Initialize the I2C Interface
     const int error = MXC_I2C_Init(MXC_I2C1, true, 0);
     if (error != E_NO_ERROR) {
         printf("Failed to initialize I2C.\n");
-        return mitre_error_t::ERROR;
+        return error_t::ERROR;
     }
 
     MXC_I2C_SetFrequency(MXC_I2C1, I2C_FREQ);
-    return mitre_error_t::SUCCESS;
+    return error_t::SUCCESS;
 }
 } // namespace i2c
