@@ -24,7 +24,7 @@
  * @return uint32_t CRC32 of buffer
  */
 template<typename T> uint32_t calc_checksum(T *buf, const uint32_t len) {
-	uint8_t _buf[len + (4 - (len % 4))] = {};
+	uint8_t _buf[300] = {};
 	memcpy(_buf, buf, len);
 	if (MXC_CRC_Init() != E_NO_ERROR) { return 0; }
 	MXC_CRC_SetPoly(0xEDB88320U);
@@ -35,7 +35,7 @@ template<typename T> uint32_t calc_checksum(T *buf, const uint32_t len) {
 
 template<typename T>
 uint32_t calc_checksum(const T *const buf, const uint32_t len) {
-	uint8_t _buf[len + (4 - (len % 4))] = {};
+	uint8_t _buf[300] = {};
 	memcpy(_buf, buf, len);
 	if (MXC_CRC_Init() != E_NO_ERROR) { return 0; }
 	MXC_CRC_SetPoly(0xEDB88320U);

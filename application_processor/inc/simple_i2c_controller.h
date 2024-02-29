@@ -51,22 +51,25 @@ packet_t<R> send_i2c_master_tx(const i2c_addr_t addr, packet_t<T> packet) {
     mxc_i2c_req_t request;
     request.i2c = MXC_I2C1;
     request.addr = addr;
-    request.tx_len = sizeof(packet_t<T>);
+    request.tx_len =
+        sizeof(payload_t<T>) + sizeof(packet_magic_t) + sizeof(uint32_t);
     request.tx_buf = txbuf;
-    request.rx_len = sizeof(packet_t<R>);
+    request.rx_len =
+        sizeof(payload_t<R>) + sizeof(packet_magic_t) + sizeof(uint32_t);
     request.rx_buf = rxbuf;
     request.restart = 0;
     request.callback = nullptr;
 
-    if (MXC_I2C_MasterTransaction(&request) == E_NO_ERROR) {
+    int error = MXC_I2C_MasterTransaction(&request);
+    if (error == E_NO_ERROR) {
         rx_packet.header.magic = static_cast<packet_magic_t>(rxbuf[0]);
         memcpy(&rx_packet.header.checksum, &rxbuf[1], sizeof(uint32_t));
         memcpy(&rx_packet.payload, &rxbuf[5], sizeof(payload_t<R>));
         return rx_packet;
     } else {
-        packet_t<R> error;
-        error.header.magic = packet_magic_t::ERROR;
-        return error;
+        packet_t<R> error_packet = {};
+        error_packet.header.magic = packet_magic_t::ERROR;
+        return error_packet;
     }
 }
 

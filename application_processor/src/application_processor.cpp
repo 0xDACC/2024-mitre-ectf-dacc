@@ -25,6 +25,7 @@
 #include "random.h"
 #include "simple_flash.h"
 #include "simple_i2c_controller.h"
+#include "utils.h"
 
 #include "tinycrypt/aes.h"
 #include "tinycrypt/ctr_mode.h"
@@ -34,8 +35,10 @@
 #include "tinycrypt/sha256.h"
 
 #ifdef POST_BOOT
+#include "mxc_delay.h"
 #include <stdint.h>
 #include <stdio.h>
+#include <string.h>
 #endif
 
 // Includes from containerized build
@@ -62,6 +65,7 @@ uint8_t shared_secrets[32][COMPONENT_CNT] = {};
 uint8_t private_keys[32][COMPONENT_CNT] = {};
 uint8_t public_keys[64][COMPONENT_CNT] = {};
 uint32_t nonces[COMPONENT_CNT] = {};
+uint8_t ctrs[16][COMPONENT_CNT] = {};
 
 static inline uint8_t cid_to_idx(const i2c_addr_t id) {
     for (uint8_t i = 0; i < COMPONENT_CNT; ++i) {
@@ -87,19 +91,48 @@ static inline uint8_t cid_to_idx(const i2c_addr_t id) {
 */
 int secure_send(const uint8_t address, const uint8_t *const buffer,
                 const uint8_t len) {
-    // TODO: Andrew, implement secure_send
-    packet_t<packet_type_t::SECURE> tx_packet = {};
-    tx_packet.header.magic = packet_magic_t::ENCRYPTED;
-    tx_packet.payload.magic = static_cast<uint8_t>(packet_magic_t::DECRYPTED);
-    tx_packet.payload.len = len;
-
     const uint8_t index = cid_to_idx(address);
+
+    uint8_t payload[sizeof(payload_t<packet_type_t::SECURE>)] = {};
+    uint8_t hash[32] = {};
+    TCAesKeySched_t aes_key = {};
+    TCHmacState_t hmac_ctx = {};
+    TCSha256State_t sha256_ctx = {};
+
+    uint8_t hmac[32] = {};
+
     if (index == 0xFF) {
         return -1;
     }
-    tx_packet.payload.nonce = nonces[index];
-    memcpy(tx_packet.payload.data, buffer, len);
-    tx_packet.header.checksum = 0;
+
+    packet_t<packet_type_t::SECURE> tx_packet = {};
+    tx_packet.header.magic = packet_magic_t::ENCRYPTED;
+
+    payload[0] = static_cast<uint8_t>(packet_magic_t::DECRYPTED);
+    payload[1] = len;
+    memcpy(&payload[2], &nonces[index], 0x04);
+    memcpy(&payload[6], buffer, len);
+    tc_hmac_init(hmac_ctx);
+    tc_hmac_set_key(hmac_ctx, HMAC_KEY, 32);
+    tc_hmac_update(hmac_ctx, &payload[0], 262);
+    tc_hmac_final(hmac, 32, hmac_ctx);
+    memcpy(&payload[262], hmac, 32);
+
+    tc_sha256_init(sha256_ctx);
+    tc_sha256_update(sha256_ctx, shared_secrets[index], 32);
+    tc_sha256_final(hash, sha256_ctx);
+
+    if (ctrs[index][2] != 0xDA && ctrs[index][3] != 0xCC) {
+        memcpy(ctrs[index], "\x00X\xDA\xCC\x00X\xDA\xCC", 8);
+        memcpy(&ctrs[index][8], &hash[16], 0x8);
+    }
+    tc_aes128_set_encrypt_key(aes_key, hash);
+    tc_ctr_mode(reinterpret_cast<uint8_t *>(&tx_packet.payload),
+                sizeof(tx_packet.payload), payload, sizeof(payload),
+                ctrs[index], aes_key);
+
+    tx_packet.header.checksum =
+        calc_checksum(&tx_packet.payload, sizeof(tx_packet.payload));
 
     const packet_t<packet_type_t::SECURE> rx_packet =
         send_i2c_master_tx<packet_type_t::SECURE, packet_type_t::SECURE>(
@@ -126,23 +159,88 @@ int secure_send(const uint8_t address, const uint8_t *const buffer,
  * functionality. This function must be implemented by your team to align with
  * the security requirements.
  */
-int secure_receive(const i2c_addr_t address, const uint8_t *const buffer) {
-    // TODO: Andrew, implement secure_receive
+int secure_receive(const i2c_addr_t address, uint8_t *const buffer) {
+    const uint8_t index = cid_to_idx(address);
+
+    uint8_t payload[sizeof(payload_t<packet_type_t::SECURE>)] = {};
+    uint8_t hash[32] = {};
+    TCAesKeySched_t aes_key = {};
+    TCHmacState_t hmac_ctx = {};
+    TCSha256State_t sha256_ctx = {};
+
+    uint8_t hmac[32] = {};
+
     packet_t<packet_type_t::SECURE> tx_packet = {};
     tx_packet.header.magic = packet_magic_t::ENCRYPTED;
-    tx_packet.header.checksum = 0;
+
+    payload[0] = static_cast<uint8_t>(packet_magic_t::DECRYPTED);
+    payload[1] = 0;
+    memcpy(&payload[2], &nonces[index], 0x04);
+
+    tc_hmac_init(hmac_ctx);
+    tc_hmac_set_key(hmac_ctx, HMAC_KEY, 32);
+    tc_hmac_update(hmac_ctx, &payload[0], 262);
+    tc_hmac_final(hmac, 32, hmac_ctx);
+    memcpy(&payload[262], hmac, 32);
+
+    tc_sha256_init(sha256_ctx);
+    tc_sha256_update(sha256_ctx, shared_secrets[index], 32);
+    tc_sha256_final(hash, sha256_ctx);
+
+    if (ctrs[index][2] != 0xDA && ctrs[index][3] != 0xCC) {
+        memcpy(ctrs[index], "\x00X\xDA\xCC\x00X\xDA\xCC", 8);
+        memcpy(&ctrs[index][8], &hash[16], 0x8);
+    }
+
+    tc_aes128_set_encrypt_key(aes_key, hash);
+    tc_ctr_mode(reinterpret_cast<uint8_t *>(&tx_packet.payload),
+                sizeof(tx_packet.payload), payload, sizeof(payload),
+                ctrs[index], aes_key);
+
+    tx_packet.header.checksum =
+        calc_checksum(&tx_packet.payload, sizeof(tx_packet.payload));
 
     const packet_t<packet_type_t::SECURE> rx_packet =
         send_i2c_master_tx<packet_type_t::SECURE, packet_type_t::SECURE>(
             address, tx_packet);
 
+    const uint32_t expected_checksum =
+        calc_checksum(&rx_packet.payload, sizeof(rx_packet.payload));
+
     if (rx_packet.header.magic != packet_magic_t::ENCRYPTED) {
+        // Invalid magic
         return -1;
-    } else if (rx_packet.type == packet_type_t::ERROR) {
+    } else if (rx_packet.header.checksum != expected_checksum) {
+        // Checksum failed
         return -1;
-    } else {
-        return 0;
     }
+
+    tc_sha256_init(sha256_ctx);
+    tc_sha256_update(sha256_ctx, shared_secrets[index], 32);
+    tc_sha256_final(hash, sha256_ctx);
+
+    tc_aes128_set_encrypt_key(aes_key, hash);
+    tc_ctr_mode(payload, sizeof(payload),
+                reinterpret_cast<const uint8_t *>(&rx_packet.payload),
+                sizeof(rx_packet.payload), ctrs[index], aes_key);
+
+    tc_hmac_init(hmac_ctx);
+    tc_hmac_set_key(hmac_ctx, HMAC_KEY, 32);
+    tc_hmac_update(hmac_ctx, &payload[0], 262);
+    tc_hmac_final(hmac, 32, hmac_ctx);
+
+    if (payload[0] != static_cast<uint8_t>(packet_magic_t::DECRYPTED)) {
+        // Invalid payload
+        return -1;
+    } else if (memcmp(&payload[2], &nonces[index], 0x04) != 0) {
+        // Invalid nonce
+        return -1;
+    } else if (memcmp(hmac, &payload[262], 32) != 0) {
+        // HMAC failed
+        return -1;
+    }
+    memcpy(buffer, &payload[6], payload[1]);
+    return payload[1];
 }
 
 /**
@@ -441,7 +539,7 @@ void boot() {
 }
 
 static error_t validate_pin() {
-    char buf[7] = {0};
+    char buf[7] = {};
     recv_input("Enter pin: ", buf, sizeof(buf));
 
     // TODO: Ezquiel and Cam, compare hashes, not raw strings
@@ -454,7 +552,7 @@ static error_t validate_pin() {
 }
 
 static error_t validate_token() {
-    char buf[17] = {0};
+    char buf[17] = {};
     recv_input("Enter token: ", buf, sizeof(buf));
 
     // TODO: Ezquiel and Cam, compare hashes, not raw strings
@@ -484,7 +582,7 @@ static void attempt_boot() {
 }
 
 static void attempt_replace() {
-    char buf[5] = {0};
+    char buf[5] = {};
 
     if (validate_token() != error_t::SUCCESS) {
         return;
@@ -522,7 +620,7 @@ static void attempt_replace() {
 }
 
 static void attempt_attest() {
-    char buf[5] = {0};
+    char buf[5] = {};
 
     if (validate_pin() != error_t::SUCCESS) {
         return;
@@ -543,8 +641,10 @@ int main() {
 
     print_info("Application Processor Started\n");
 
+    LED_On(LED3);
+
     // Handle commands forever
-    char buf[8] = {0};
+    char buf[8] = {};
     while (true) {
         recv_input("Enter Command: ", buf, sizeof(buf));
 

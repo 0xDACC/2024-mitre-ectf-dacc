@@ -18,16 +18,16 @@
  *
  */
 enum class packet_magic_t : uint8_t {
-	ERROR	   = 0x00,
-	KEX		   = 0x01,
-	LIST	   = 0x02,
-	LIST_ACK   = 0x03,
-	ATTEST	   = 0x04,
-	BOOT	   = 0x05,
-	DECRYPTED  = 0x06,
-	ENCRYPTED  = 0x07,
-	ATTEST_ACK = 0x08,
-	BOOT_ACK   = 0x09
+	ERROR,
+	KEX,
+	LIST,
+	LIST_ACK,
+	ATTEST,
+	BOOT,
+	DECRYPTED,
+	ENCRYPTED,
+	ATTEST_ACK,
+	BOOT_ACK
 };
 
 /**

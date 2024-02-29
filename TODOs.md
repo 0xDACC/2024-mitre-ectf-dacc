@@ -46,10 +46,10 @@
 ## Secure Send & Receive (Andrew)
 
 - [X] ECDHE Encryption Scheme
-- [ ] Encrypt all packets with AES-128-CTR mode
+- [X] Encrypt all packets with AES-128-CTR mode
 - [X] Derive Private Key randomly
-- [ ] SHA256 ECDH Shared Secret
-- [ ] First 16 bytes of hash as AES key, Next 8 as IV
-- [ ] Negotiate HMAC key over encrypted channel
-- [ ] Append an HMAC to end of all other packets before encrypting
-- [ ] Completed All Objectives
+- [X] SHA256 ECDH Shared Secret
+- [X] First 16 bytes of hash as AES key, Next 8 as IV
+- [X] Negotiate HMAC key over encrypted channel
+- [X] Append an HMAC to end of all other packets before encrypting
+- [X] Completed All Objectives

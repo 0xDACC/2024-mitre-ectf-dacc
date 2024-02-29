@@ -10,6 +10,7 @@
  */
 
 #include "board.h"
+#include "flc.h"
 #include "i2c.h"
 #include "led.h"
 #include "mxc_delay.h"
@@ -26,8 +27,10 @@
 #include "random.h"
 #include "simple_i2c_peripheral.h"
 
+#include "tinycrypt/ctr_mode.h"
 #include "tinycrypt/ecc.h"
 #include "tinycrypt/ecc_dh.h"
+#include "tinycrypt/hmac.h"
 #include "tinycrypt/sha256.h"
 
 // Includes from containerized build
@@ -42,21 +45,21 @@
 #endif
 
 // Core function definitions
-static error_t component_process_cmd(const uint8_t *const data,
-                                     const uint32_t len);
-static void process_boot(const uint8_t *const data, const uint32_t len);
-static void process_list(const uint8_t *const data, const uint32_t len);
-static void process_validate(const uint8_t *const data, const uint32_t len);
-static void process_attest(const uint8_t *const data, const uint32_t len);
-static void process_kex(const uint8_t *const data, const uint32_t len);
+static error_t component_process_cmd(const uint8_t *const data);
+static error_t process_boot(const uint8_t *const data);
+static error_t process_list(const uint8_t *const data);
+static error_t process_validate(const uint8_t *const data);
+static error_t process_attest(const uint8_t *const data);
+static error_t process_kex(const uint8_t *const data);
 
 enum class state_t { PREBOOT, POSTBOST };
 volatile state_t state = state_t::PREBOOT;
 
-uint8_t shared_secret[32];
-uint8_t private_key[32];
-uint8_t public_key[64];
-
+uint8_t shared_secret[32] = {};
+uint8_t private_key[32] = {};
+uint8_t public_key[64] = {};
+uint32_t nonce = {};
+uint8_t ctr[16] = {};
 using namespace i2c;
 
 /**
@@ -70,18 +73,46 @@ using namespace i2c;
  * the security requirements.
  */
 static void secure_send(const uint8_t *const buffer, const uint8_t len) {
-    // TODO: Andrew, implement secure_send
-    packet_t<packet_type_t::SECURE> tx_packet;
+    uint8_t payload[sizeof(payload_t<packet_type_t::SECURE>)] = {};
+    uint8_t hash[32] = {};
+    TCAesKeySched_t aes_key = {};
+    TCHmacState_t hmac_ctx = {};
+    TCSha256State_t sha256_ctx = {};
+
+    uint8_t hmac[32] = {};
+
+    packet_t<packet_type_t::SECURE> tx_packet = {};
     tx_packet.header.magic = packet_magic_t::ENCRYPTED;
-    tx_packet.header.checksum = 0;
 
-    const packet_t<packet_type_t::SECURE> rx_packet = {};
+    payload[0] = static_cast<uint8_t>(packet_magic_t::DECRYPTED);
+    payload[1] = len;
+    memcpy(&payload[2], &nonce, 0x04);
+    memcpy(&payload[6], buffer, len);
+    tc_hmac_init(hmac_ctx);
+    tc_hmac_set_key(hmac_ctx, HMAC_KEY, 32);
+    tc_hmac_update(hmac_ctx, &payload[0], 262);
+    tc_hmac_final(hmac, 32, hmac_ctx);
+    memcpy(&payload[262], hmac, 32);
 
-    if (rx_packet.header.magic != packet_magic_t::ENCRYPTED) {
-    } else if (rx_packet.type == packet_type_t::ERROR) {
-    } else {
+    tc_sha256_init(sha256_ctx);
+    tc_sha256_update(sha256_ctx, shared_secret, 32);
+    tc_sha256_final(hash, sha256_ctx);
+
+    if (ctr[2] != 0xDA && ctr[3] != 0xCC) {
+        memcpy(ctr, "\x00X\xDA\xCC\x00X\xDA\xCC", 8);
+        memcpy(&ctr[8], &hash[16], 0x8);
     }
+    tc_aes128_set_encrypt_key(aes_key, hash);
+    tc_ctr_mode(reinterpret_cast<uint8_t *>(&tx_packet.payload),
+                sizeof(tx_packet.payload), payload, sizeof(payload), ctr,
+                aes_key);
+
+    tx_packet.header.checksum =
+        calc_checksum(&tx_packet.payload, sizeof(tx_packet.payload));
+
+    send_packet<packet_type_t::SECURE>(tx_packet);
 }
+
 /**
  * @brief Secure Receive
  *
@@ -93,21 +124,100 @@ static void secure_send(const uint8_t *const buffer, const uint8_t len) {
  * functionality. This function must be implemented by your team to align
  * with the security requirements.
  */
-static int secure_receive(const uint8_t *const buffer) {
-    // TODO: Andrew, implement secure_send
-    packet_t<packet_type_t::SECURE> tx_packet;
-    tx_packet.header.magic = packet_magic_t::ENCRYPTED;
-    tx_packet.header.checksum = 0;
+static int secure_receive(uint8_t *const buffer) {
+    uint8_t payload[sizeof(payload_t<packet_type_t::SECURE>)] = {};
+    uint8_t hash[32] = {};
+    TCAesKeySched_t aes_key = {};
+    TCHmacState_t hmac_ctx = {};
+    TCSha256State_t sha256_ctx = {};
 
-    const packet_t<packet_type_t::SECURE> rx_packet = {};
+    uint8_t hmac[32] = {};
+
+    // Wait for packet
+    while (static_cast<packet_magic_t>(rxbuf[0]) != packet_magic_t::ENCRYPTED) {
+        continue;
+    }
+
+    packet_t<packet_type_t::SECURE> rx_packet = {};
+    rx_packet.header.magic = static_cast<packet_magic_t>(rxbuf[0]);
+
+    memcpy(&rx_packet.header.checksum, const_cast<uint8_t *>(&rxbuf[1]), 0x04);
+    memcpy(&rx_packet.payload, const_cast<uint8_t *>(&rxbuf[5]),
+           sizeof(rx_packet.payload));
+
+    const uint32_t expected_checksum =
+        calc_checksum(&rx_packet.payload, sizeof(rx_packet.payload));
 
     if (rx_packet.header.magic != packet_magic_t::ENCRYPTED) {
+        // Invalid magic
         return -1;
-    } else if (rx_packet.type == packet_type_t::ERROR) {
+    } else if (rx_packet.header.checksum != expected_checksum) {
+        // Checksum failed
         return -1;
-    } else {
-        return 0;
     }
+
+    tc_sha256_init(sha256_ctx);
+    tc_sha256_update(sha256_ctx, shared_secret, 32);
+    tc_sha256_final(hash, sha256_ctx);
+
+    if (ctr[2] != 0xDA && ctr[3] != 0xCC) {
+        memcpy(ctr, "\x00X\xDA\xCC\x00X\xDA\xCC", 8);
+        memcpy(&ctr[8], &hash[16], 0x8);
+    }
+
+    tc_aes128_set_encrypt_key(aes_key, hash);
+    tc_ctr_mode(payload, sizeof(payload),
+                reinterpret_cast<uint8_t *>(&rx_packet.payload),
+                sizeof(rx_packet.payload), ctr, aes_key);
+
+    tc_hmac_init(hmac_ctx);
+    tc_hmac_set_key(hmac_ctx, HMAC_KEY, 32);
+    tc_hmac_update(hmac_ctx, &payload[0], 262);
+    tc_hmac_final(hmac, 32, hmac_ctx);
+
+    if (payload[0] != static_cast<uint8_t>(packet_magic_t::DECRYPTED)) {
+        // Invalid payload
+        return -1;
+    } else if (memcmp(&payload[2], &nonce, 0x04) != 0) {
+        // Invalid nonce
+        return -1;
+    } else if (memcmp(hmac, &payload[262], 32) != 0) {
+        // HMAC failed
+        return -1;
+    }
+    memcpy(buffer, &payload[6], payload[1]);
+    packet_t<packet_type_t::SECURE> tx_packet = {};
+    tx_packet.header.magic = packet_magic_t::ENCRYPTED;
+
+    payload[0] = static_cast<uint8_t>(packet_magic_t::DECRYPTED);
+    payload[1] = 0;
+    memcpy(&payload[2], &nonce, 0x04);
+
+    tc_hmac_init(hmac_ctx);
+    tc_hmac_set_key(hmac_ctx, HMAC_KEY, 32);
+    tc_hmac_update(hmac_ctx, &payload[0], 262);
+    tc_hmac_final(hmac, 32, hmac_ctx);
+    memcpy(&payload[262], hmac, 32);
+
+    tc_sha256_init(sha256_ctx);
+    tc_sha256_update(sha256_ctx, shared_secret, 32);
+    tc_sha256_final(hash, sha256_ctx);
+
+    if (ctr[2] != 0xDA && ctr[3] != 0xCC) {
+        memcpy(ctr, "\x00X\xDA\xCC\x00X\xDA\xCC", 8);
+        memcpy(&ctr[8], &hash[16], 0x8);
+    }
+
+    tc_aes128_set_encrypt_key(aes_key, hash);
+    tc_ctr_mode(reinterpret_cast<uint8_t *>(&tx_packet.payload),
+                sizeof(tx_packet.payload), payload, sizeof(payload), ctr,
+                aes_key);
+
+    tx_packet.header.checksum =
+        calc_checksum(&tx_packet.payload, sizeof(tx_packet.payload));
+
+    send_packet<packet_type_t::SECURE>(tx_packet);
+    return payload[1];
 }
 
 // Example boot sequence
@@ -143,60 +253,54 @@ static void boot() {
 }
 
 // Handle a transaction from the AP
-static error_t component_process_cmd(const uint8_t *const data,
-                                     const uint32_t len) {
-    printf("Processing command\n");
-    if (data == nullptr || len < 5) {
+static error_t component_process_cmd(const uint8_t *const data) {
+    if (data == nullptr) {
         return error_t::ERROR;
     }
     switch (static_cast<packet_magic_t>(data[0])) {
     case packet_magic_t::ATTEST:
-        process_attest(data, len);
+        return process_attest(data);
         break;
     case packet_magic_t::BOOT:
-        process_boot(data, len);
+        return process_boot(data);
         break;
     case packet_magic_t::KEX:
-        process_kex(data, len);
+        return process_kex(data);
         break;
     case packet_magic_t::LIST:
-        process_list(data, len);
+        return process_list(data);
+        break;
+    case packet_magic_t::ENCRYPTED:
+        return state == state_t::POSTBOST ? error_t::SUCCESS : error_t::ERROR;
         break;
     default:
         printf("Error: Unrecognized command received %d\n", data[0]);
         return error_t::ERROR;
     }
-    return error_t::SUCCESS;
 }
 
-static void process_boot(const uint8_t *const data, const uint32_t len) {
-    printf("Processing BOOT\n");
-    if (len < 75) {
-        // Invalid packet length
-        return;
-    }
-
+static error_t process_boot(const uint8_t *const data) {
     packet_t<packet_type_t::BOOT_COMMAND> rx_packet;
     rx_packet.header.magic = packet_magic_t::LIST;
 
     memcpy(&rx_packet.header.checksum, &data[1], 0x04);
-    memcpy(&rx_packet.payload, &data[5], len - 5);
+    memcpy(&rx_packet.payload, &data[5], sizeof(rx_packet.payload));
 
     const uint32_t expected_checksum =
         calc_checksum(&rx_packet.payload, sizeof(rx_packet.payload));
     if (rx_packet.header.checksum != expected_checksum) {
         // Checksum failed
-        return;
+        return error_t::ERROR;
     } else if (rx_packet.payload.len != 0x04) {
         // Invalid payload length
-        return;
+        return error_t::ERROR;
     } else if (memcmp(rx_packet.payload.data, "BOOT", 0x4) != 0) {
         // Invalid payload
-        return;
+        return error_t::ERROR;
     } else if (/*sigverify(data) ==*/false) {
         // TODO: Tyler, implement signature verification here
         // Invalid signature
-        return;
+        return error_t::ERROR;
     }
 
     packet_t<packet_type_t::BOOT_ACK> tx_packet;
@@ -209,33 +313,28 @@ static void process_boot(const uint8_t *const data, const uint32_t len) {
     tx_packet.header.checksum =
         calc_checksum(&tx_packet.payload, sizeof(tx_packet.payload));
 
-    handler->send_packet<packet_type_t::BOOT_ACK>(tx_packet);
+    send_packet<packet_type_t::BOOT_ACK>(tx_packet);
     state = state_t::POSTBOST;
+    return error_t::SUCCESS;
 }
 
-static void process_list(const uint8_t *const data, const uint32_t len) {
-    printf("Processing LIST\n");
-    if (len < 6) {
-        // Invalid packet length
-        return;
-    }
+static error_t process_list(const uint8_t *const data) {
 
     packet_t<packet_type_t::LIST_COMMAND> rx_packet;
     rx_packet.header.magic = packet_magic_t::LIST;
 
     memcpy(&rx_packet.header.checksum, &data[1], 0x04);
-    memcpy(&rx_packet.payload, &data[5], len - 5);
+    memcpy(&rx_packet.payload, &data[5], sizeof(rx_packet.payload));
 
     const uint32_t expected_checksum =
         calc_checksum(&rx_packet.payload, sizeof(rx_packet.payload));
     if (rx_packet.header.checksum != expected_checksum) {
         // Checksum failed
-        return;
+        return error_t::ERROR;
     } else if (rx_packet.payload.len != 0x00) {
         // Invalid payload length
-        return;
+        return error_t::ERROR;
     }
-
     packet_t<packet_type_t::LIST_ACK> tx_packet;
     tx_packet.header.magic = packet_magic_t::LIST_ACK;
     tx_packet.payload.len = 0x04;
@@ -245,45 +344,39 @@ static void process_list(const uint8_t *const data, const uint32_t len) {
     tx_packet.header.checksum =
         calc_checksum(&tx_packet.payload, sizeof(tx_packet.payload));
 
-    handler->send_packet<packet_type_t::LIST_ACK>(tx_packet);
+    send_packet<packet_type_t::LIST_ACK>(tx_packet);
+    return error_t::SUCCESS;
 }
 
 static void process_validate(const uint8_t *const data, const uint32_t len) {
-    printf("Processing VALIDATE\n");
     // This is the signing part (all systems valid on page 5)
 
     // TODO: Tyler, implement packet checks and signature algorithms
     return;
 }
 
-static void process_attest(const uint8_t *const data, const uint32_t len) {
-    printf("Processing ATTEST\n");
-    if (len < 77) {
-        // Invalid packet length
-        return;
-    }
-
+static error_t process_attest(const uint8_t *const data) {
     packet_t<packet_type_t::ATTEST_COMMAND> rx_packet;
     rx_packet.header.magic = packet_magic_t::ATTEST;
 
     memcpy(&rx_packet.header.checksum, &data[1], 0x04);
-    memcpy(&rx_packet.payload, &data[5], len - 5);
+    memcpy(&rx_packet.payload, &data[5], sizeof(rx_packet.payload));
 
     const uint32_t expected_checksum =
         calc_checksum(&rx_packet.payload, sizeof(rx_packet.payload));
     if (rx_packet.header.checksum != expected_checksum) {
         // Checksum failed
-        return;
+        return error_t::ERROR;
     } else if (rx_packet.payload.len != 0x6) {
         // Invalid payload length
-        return;
+        return error_t::ERROR;
     } else if (memcmp(rx_packet.payload.data, "ATTEST", 0x6) != 0) {
         // Invalid payload
-        return;
+        return error_t::ERROR;
     } else if (/*sigverify(data) ==*/false) {
         // TODO: Henry and David, implement signature verification here
         // Invalid signature
-        return;
+        return error_t::ERROR;
     }
 
     packet_t<packet_type_t::ATTEST_ACK> tx_packet;
@@ -299,21 +392,16 @@ static void process_attest(const uint8_t *const data, const uint32_t len) {
 
     tx_packet.header.checksum =
         calc_checksum(&tx_packet.payload, sizeof(tx_packet.payload));
-    handler->send_packet<packet_type_t::ATTEST_ACK>(tx_packet);
+    send_packet<packet_type_t::ATTEST_ACK>(tx_packet);
+    return error_t::SUCCESS;
 }
 
-static void process_kex(const uint8_t *const data, const uint32_t len) {
-    printf("Processing KEX\n");
-    if (len < 102) {
-        // Invalid packet length
-        return;
-    }
-
+static error_t process_kex(const uint8_t *const data) {
     packet_t<packet_type_t::KEX> rx_packet;
     rx_packet.header.magic = static_cast<packet_magic_t>(data[0]);
 
     memcpy(&rx_packet.header.checksum, &data[1], 0x04);
-    memcpy(&rx_packet.payload, &data[5], len - 5);
+    memcpy(&rx_packet.payload, &data[5], sizeof(rx_packet.payload));
 
     const uint32_t expected_checksum =
         calc_checksum(&rx_packet.payload, sizeof(rx_packet.payload));
@@ -327,17 +415,17 @@ static void process_kex(const uint8_t *const data, const uint32_t len) {
 
     if (rx_packet.header.checksum != expected_checksum) {
         // Checksum failed
-        return;
+        return error_t::ERROR;
     } else if (rx_packet.payload.len != 0x60) {
         // Invalid payload length
-        return;
+        return error_t::ERROR;
     } else if (uECC_valid_public_key(rx_packet.payload.material,
                                      uECC_secp256r1()) < 0) {
         // Invalid public key
-        return;
+        return error_t::ERROR;
     } else if (memcmp(rx_packet.payload.hash, expected_hash, 0x20) != 0) {
         // Invalid hash
-        return;
+        return error_t::ERROR;
     }
 
     uECC_make_key(public_key, private_key, uECC_secp256r1());
@@ -358,7 +446,8 @@ static void process_kex(const uint8_t *const data, const uint32_t len) {
 
     tx_packet.header.checksum =
         calc_checksum(&tx_packet.payload, sizeof(tx_packet.payload));
-    handler->send_packet(tx_packet);
+    send_packet(tx_packet);
+    return error_t::SUCCESS;
 }
 
 int main() {

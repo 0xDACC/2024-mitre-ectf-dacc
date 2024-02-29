@@ -16,18 +16,21 @@
 #include "packets.h"
 
 namespace i2c {
-I2C_Handler *handler = nullptr;
+volatile uint8_t txbuf[bufsize] = {};
+volatile uint8_t rxbuf[bufsize] = {};
+volatile uint32_t txsize = 0;
+volatile uint32_t rxcnt = 0;
+volatile uint32_t txcnt = 0;
+volatile i2c_cb_t processing_cb = nullptr;
 
 error_t i2c_simple_peripheral_init(const uint8_t addr, const i2c_cb_t cb) {
     int error = 0;
-    handler = new I2C_Handler(cb);
+    processing_cb = cb;
 
     error = MXC_I2C_Init(MXC_I2C1, false, addr);
     if (error != E_NO_ERROR) {
         printf("Failed to initialize I2C. %d\n", error);
         return error_t::ERROR;
-    } else {
-        printf("I2C initialized\n");
     }
 
     MXC_I2C_SetFrequency(MXC_I2C1, I2C_FREQ);
@@ -38,8 +41,9 @@ error_t i2c_simple_peripheral_init(const uint8_t addr, const i2c_cb_t cb) {
     MXC_I2C_EnableInt(MXC_I2C1, MXC_F_I2C_INTFL0_WR_ADDR_MATCH, 0);
     MXC_I2C_EnableInt(MXC_I2C1, MXC_F_I2C_INTFL0_STOP, 0);
 
-    MXC_NVIC_SetVector(I2C1_IRQn, i2c_simple_isr);
-    NVIC_EnableIRQ(I2C1_IRQn);
+    MXC_NVIC_SetVector(MXC_I2C_GET_IRQ(MXC_I2C_GET_IDX(MXC_I2C1)),
+                       i2c_simple_isr);
+    NVIC_EnableIRQ(MXC_I2C_GET_IRQ(MXC_I2C_GET_IDX(MXC_I2C1)));
 
     MXC_I2C_ClearFlags(MXC_I2C1, 0xFFFFFFFFU, 0xFFFFFFFFU);
 
@@ -47,19 +51,20 @@ error_t i2c_simple_peripheral_init(const uint8_t addr, const i2c_cb_t cb) {
 }
 
 void i2c_simple_isr() {
-    printf("Inside ISR");
-    uint8_t buf[8] = {};
-    uint32_t len = 0;
+    LED_Toggle(LED1);
 
     const uint32_t flags = MXC_I2C1->intfl0;
-    const uint32_t ints = MXC_I2C1->inten0;
 
     if ((flags & MXC_F_I2C_INTFL0_STOP) != 0) {
         // Transaction ended
         const uint8_t available = MXC_I2C_GetRXFIFOAvailable(MXC_I2C1);
-        const uint8_t size = handler->get_rx_size(available);
-        len += MXC_I2C_ReadRXFIFO(MXC_I2C1, buf, size);
-        handler->append_rx(buf, len);
+        if (available > (bufsize - rxcnt) && available != 0) {
+            MXC_I2C_ReadRXFIFO(MXC_I2C1, rxbuf + rxcnt, bufsize - rxcnt);
+            rxcnt += bufsize - rxcnt;
+        } else {
+            MXC_I2C_ReadRXFIFO(MXC_I2C1, rxbuf + rxcnt, available);
+            rxcnt += available;
+        }
 
         MXC_I2C_DisableInt(MXC_I2C1, MXC_F_I2C_INTEN0_RX_THD, 0);
         MXC_I2C_DisableInt(MXC_I2C1, MXC_F_I2C_INTEN0_TX_THD, 0);
@@ -70,27 +75,38 @@ void i2c_simple_isr() {
         if (MXC_I2C_GetTXFIFOAvailable(MXC_I2C1) != 8) {
             MXC_I2C_ClearTXFIFO(MXC_I2C1);
         }
-
         // Reset state
-        handler->clear_rxcnt();
-        handler->clear_txcnt();
+        rxcnt = 0;
+        txcnt = 0;
 
         MXC_I2C_ClearFlags(MXC_I2C1, MXC_F_I2C_INTFL0_STOP, 0);
     }
 
     if ((flags & MXC_F_I2C_INTEN0_TX_THD) != 0 &&
-        (ints & MXC_F_I2C_INTEN0_TX_THD) != 0) {
+        (MXC_I2C1->inten0 & MXC_F_I2C_INTEN0_TX_THD) != 0) {
         // Master reading more from us
 
         if ((flags & MXC_F_I2C_INTFL0_TX_LOCKOUT) != 0) {
             MXC_I2C_ClearFlags(MXC_I2C1, MXC_F_I2C_INTFL0_TX_LOCKOUT, 0);
         }
 
-        uint8_t size = MXC_I2C_GetTXFIFOAvailable(MXC_I2C1);
-        handler->remove_tx(buf, &size);
-        MXC_I2C_WriteTXFIFO(MXC_I2C1, buf, size);
+        const uint8_t available = MXC_I2C_GetTXFIFOAvailable(MXC_I2C1);
+        if (txsize == 0) {
+            LED_Toggle(LED2);
+            // Call the callback function
+            if (call_processing_callback() != error_t::SUCCESS) {
+                return;
+            }
+        }
+        if (available > (txsize - txcnt) && txsize > 0) {
+            MXC_I2C_WriteTXFIFO(MXC_I2C1, txbuf + txcnt, txsize - txcnt);
+            txcnt += txsize - txcnt;
+        } else if (txsize > 0) {
+            MXC_I2C_WriteTXFIFO(MXC_I2C1, txbuf + txcnt, available);
+            txcnt += available;
+        }
 
-        if (handler->is_tx_done()) {
+        if (txcnt >= txsize - 1 && txsize > 0) {
             MXC_I2C_DisableInt(MXC_I2C1, MXC_F_I2C_INTEN0_TX_THD, 0);
         }
 
@@ -99,18 +115,19 @@ void i2c_simple_isr() {
 
     if ((flags & MXC_F_I2C_INTFL0_WR_ADDR_MATCH) != 0) {
         // Master requested a read from us
-        if (handler->call_processing_callback() != error_t::SUCCESS) {
-            return;
-        }
-
         MXC_I2C_ClearFlags(MXC_I2C1, MXC_F_I2C_INTFL0_WR_ADDR_MATCH, 0);
 
         if ((flags & MXC_F_I2C_INTFL0_TX_LOCKOUT) != 0) {
             MXC_I2C_ClearFlags(MXC_I2C1, MXC_F_I2C_INTFL0_TX_LOCKOUT, 0);
 
-            uint8_t size = MXC_I2C_GetTXFIFOAvailable(MXC_I2C1);
-            handler->remove_tx(buf, &size);
-            MXC_I2C_WriteTXFIFO(MXC_I2C1, buf, size);
+            const uint8_t available = MXC_I2C_GetTXFIFOAvailable(MXC_I2C1);
+            if (available > (txsize - txcnt) && txsize > 0) {
+                MXC_I2C_WriteTXFIFO(MXC_I2C1, txbuf + txcnt, txsize - txcnt);
+                txcnt += txsize - txcnt;
+            } else if (txsize > 0) {
+                MXC_I2C_WriteTXFIFO(MXC_I2C1, txbuf + txcnt, available);
+                txcnt += available;
+            }
 
             MXC_I2C_EnableInt(MXC_I2C1, MXC_F_I2C_INTEN0_TX_THD, 0);
         }
@@ -128,12 +145,33 @@ void i2c_simple_isr() {
         // Master writing more to us
 
         const uint8_t available = MXC_I2C_GetRXFIFOAvailable(MXC_I2C1);
-        const uint8_t size = handler->get_rx_size(available);
-        len += MXC_I2C_ReadRXFIFO(MXC_I2C1, buf, size);
-        handler->append_rx(buf, len);
+        if (available > (bufsize - rxcnt)) {
+            MXC_I2C_ReadRXFIFO(MXC_I2C1, rxbuf + rxcnt, bufsize - rxcnt);
+            rxcnt += bufsize - rxcnt;
+        } else {
+            MXC_I2C_ReadRXFIFO(MXC_I2C1, rxbuf + rxcnt, available);
+            rxcnt += available;
+        }
 
         MXC_I2C_ClearFlags(MXC_I2C1, MXC_F_I2C_INTFL0_RX_THD, 0);
     }
+}
+
+void send_raw(const uint8_t *const buf, const uint32_t len) {
+    for (uint32_t i = 0; i < len; ++i) {
+        txbuf[i] = buf[i];
+    }
+    txsize = len;
+}
+
+void clear() {
+    for (uint32_t i = 0; i < bufsize; ++i) {
+        txbuf[i] = 0;
+        rxbuf[i] = 0;
+    }
+    txsize = 0;
+    rxcnt = 0;
+    txcnt = 0;
 }
 
 } // namespace i2c
