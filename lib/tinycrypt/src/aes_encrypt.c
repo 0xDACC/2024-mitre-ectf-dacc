@@ -37,12 +37,29 @@
 #include <tinycrypt/constants.h>
 #include <tinycrypt/utils.h>
 
+int tc_aes128_set_encrypt_key(TCAesKeySched_t s, const uint8_t *k) {
+	unsigned int i;
+
+	if (s == (TCAesKeySched_t)0) {
+		return TC_CRYPTO_FAIL;
+	} else if (k == (const uint8_t *)0) {
+		return TC_CRYPTO_FAIL;
+	}
+
+	for (unsigned int i = 0; i < Nk; ++i) {
+		s->words[i] = (k[Nb * i] << 24) | (k[Nb * i + 1] << 16) |
+					  (k[Nb * i + 2] << 8) | (k[Nb * i + 3]);
+	}
+
+	return TC_CRYPTO_SUCCESS;
+}
+
 int tc_aes_encrypt(uint8_t *out, const uint8_t *in, const TCAesKeySched_t s) {
 	if (out == (uint8_t *)0) {
 		return TC_CRYPTO_FAIL;
-	} else if (in == (uint8_t *)0) {
+	} else if (in == (const uint8_t *)0) {
 		return TC_CRYPTO_FAIL;
-	} else if (s == (TCAesKeySched_t)0) {
+	} else if (s == (const TCAesKeySched_t)0) {
 		return TC_CRYPTO_FAIL;
 	}
 
