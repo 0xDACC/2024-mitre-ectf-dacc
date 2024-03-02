@@ -48,8 +48,8 @@ int tc_aes_encrypt(uint8_t *out, uint8_t *in, const TCAesKeySched_t s) {
 
 	mxc_aes_req_t req;
 	req.length	   = Nk * Nb;
-	req.inputData  = in;
-	req.resultData = out;
+	req.inputData  = (uint8_t *)in;
+	req.resultData = (uint8_t *)out;
 	req.keySize	   = MXC_AES_128BITS;
 	req.encryption = MXC_AES_ENCRYPT_EXT_KEY;
 
