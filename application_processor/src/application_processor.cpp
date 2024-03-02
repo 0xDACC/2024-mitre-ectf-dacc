@@ -89,8 +89,8 @@ static inline uint8_t cid_to_idx(const i2c_addr_t id) {
  requirements.
 
 */
-int secure_send(const uint8_t address, const uint8_t *const buffer,
-                const uint8_t len) {
+static int secure_send(const uint8_t address, const uint8_t *const buffer,
+                       const uint8_t len) {
     const uint8_t index = cid_to_idx(address);
 
     uint8_t payload[sizeof(payload_t<packet_type_t::SECURE>)] = {};
@@ -159,7 +159,7 @@ int secure_send(const uint8_t address, const uint8_t *const buffer,
  * functionality. This function must be implemented by your team to align with
  * the security requirements.
  */
-int secure_receive(const i2c_addr_t address, uint8_t *const buffer) {
+static int secure_receive(const i2c_addr_t address, uint8_t *const buffer) {
     const uint8_t index = cid_to_idx(address);
 
     uint8_t payload[sizeof(payload_t<packet_type_t::SECURE>)] = {};
@@ -169,6 +169,10 @@ int secure_receive(const i2c_addr_t address, uint8_t *const buffer) {
     TCSha256State_t sha256_ctx = {};
 
     uint8_t hmac[32] = {};
+
+    if (index == 0xFF) {
+        return -1;
+    }
 
     packet_t<packet_type_t::SECURE> tx_packet = {};
     tx_packet.header.magic = packet_magic_t::ENCRYPTED;
@@ -453,21 +457,26 @@ static error_t attest_component(const uint32_t component_id) {
     return error_t::SUCCESS;
 }
 
-static void perform_kex(const uint8_t addr, const uint8_t component_idx) {
+static error_t perform_kex(const uint8_t addr) {
     packet_t<packet_type_t::KEX> tx_packet = {};
     tx_packet.header.magic = packet_magic_t::KEX;
     tx_packet.payload.len = 0x60;
 
-    uECC_make_key(public_keys[component_idx], private_keys[component_idx],
-                  uECC_secp256r1());
+    const uint8_t index = component_id_to_i2c_addr(addr);
+
+    if (index == 0xFF) {
+        return error_t::ERROR;
+    }
+
+    uECC_make_key(public_keys[index], private_keys[index], uECC_secp256r1());
 
     uint8_t hash[32] = {};
     TCSha256State_t sha256_ctx = {};
     tc_sha256_init(sha256_ctx);
-    tc_sha256_update(sha256_ctx, public_keys[component_idx], 0x40);
+    tc_sha256_update(sha256_ctx, public_keys[index], 0x40);
     tc_sha256_final(hash, sha256_ctx);
 
-    memcpy(tx_packet.payload.material, public_keys[component_idx], 0x40);
+    memcpy(tx_packet.payload.material, public_keys[index], 0x40);
     memcpy(tx_packet.payload.hash, hash, 0x20);
 
     tx_packet.header.checksum =
@@ -485,28 +494,24 @@ static void perform_kex(const uint8_t addr, const uint8_t component_idx) {
 
     if (rx_packet.header.magic != packet_magic_t::KEX) {
         // Invalid response
-        print_error("Could not perform key exchange\n");
-        return;
+        return error_t::ERROR;
     } else if (rx_packet.header.checksum != expected_checksum) {
         // Invalid checksum
-        print_error("Could not perform key exchange\n");
-        return;
+        return error_t::ERROR;
     } else if (memcmp(rx_packet.payload.hash, hash, 0x20) != 0) {
         // Invalid hash
-        print_error("Could not perform key exchange\n");
-        return;
+        return error_t::ERROR;
     } else if (rx_packet.payload.len != 0x60) {
         // Invalid payload
-        print_error("Could not perform key exchange\n");
-        return;
+        return error_t::ERROR;
     } else if (uECC_valid_public_key(rx_packet.payload.material,
                                      uECC_secp256r1()) != 0) {
         // Invalid public key
-        print_error("Could not perform key exchange\n");
-        return;
+        return error_t::ERROR;
     }
-    uECC_shared_secret(rx_packet.payload.material, private_keys[component_idx],
-                       shared_secrets[component_idx], uECC_secp256r1());
+    uECC_shared_secret(rx_packet.payload.material, private_keys[index],
+                       shared_secrets[index], uECC_secp256r1());
+    return error_t::SUCCESS;
 }
 
 // Boot sequence
@@ -569,10 +574,16 @@ static void attempt_boot() {
         print_error("Components could not be validated\n");
         return;
     }
-    print_debug("All Components validated\n");
     if (boot_components() != error_t::SUCCESS) {
         print_error("Failed to boot all components\n");
         return;
+    }
+    for (uint32_t i = 0; i < flash_status.component_cnt; ++i) {
+        const i2c_addr_t addr =
+            component_id_to_i2c_addr(flash_status.component_ids[i]);
+        if (perform_kex(addr) != error_t::SUCCESS) {
+            return;
+        }
     }
 
     print_info("AP>%s\n", AP_BOOT_MSG);
