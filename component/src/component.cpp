@@ -348,11 +348,11 @@ static error_t process_list(const uint8_t *const data) {
     return error_t::SUCCESS;
 }
 
-static void process_validate(const uint8_t *const data, const uint32_t len) {
+static error_t process_validate(const uint8_t *const data, const uint32_t len) {
     // This is the signing part (all systems valid on page 5)
 
     // TODO: Tyler, implement packet checks and signature algorithms
-    return;
+    return error_t::SUCCESS;
 }
 
 static error_t process_attest(const uint8_t *const data) {
