@@ -37,7 +37,7 @@
 #include <tinycrypt/constants.h>
 #include <tinycrypt/utils.h>
 
-int tc_aes_encrypt(uint8_t *out, uint8_t *in, const TCAesKeySched_t s) {
+extern "C" int tc_aes_encrypt(uint8_t *out, uint8_t *in, const TCAesKeySched_t s) {
 	if (out == nullptr) {
 		return TC_CRYPTO_FAIL;
 	} else if (in == nullptr) {
