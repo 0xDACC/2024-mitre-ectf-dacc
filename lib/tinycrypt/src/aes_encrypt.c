@@ -37,19 +37,19 @@
 #include <tinycrypt/constants.h>
 #include <tinycrypt/utils.h>
 
-extern "C" int tc_aes_encrypt(uint8_t *out, uint8_t *in, const TCAesKeySched_t s) {
-	if (out == nullptr) {
+int tc_aes_encrypt(uint8_t *out, uint8_t *in, const TCAesKeySched_t s) {
+	if (out == (uint8_t *)0) {
 		return TC_CRYPTO_FAIL;
-	} else if (in == nullptr) {
+	} else if (in == (uint8_t *)0) {
 		return TC_CRYPTO_FAIL;
-	} else if (s == nullptr) {
+	} else if (s == (TCAesKeySched_t)0) {
 		return TC_CRYPTO_FAIL;
 	}
 
 	mxc_aes_req_t req;
 	req.length	   = Nk * Nb;
-	req.inputData  = reinterpret_cast<uint32_t *>(in);
-	req.resultData = reinterpret_cast<uint32_t *>(out);
+	req.inputData  = in;
+	req.resultData = out;
 	req.keySize	   = MXC_AES_128BITS;
 	req.encryption = MXC_AES_ENCRYPT_EXT_KEY;
 
