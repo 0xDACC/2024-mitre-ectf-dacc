@@ -548,6 +548,12 @@ static error_t validate_pin() {
     recv_input("Enter pin: ", buf, sizeof(buf));
 
     // TODO: Ezequiel and Cam, compare hashes, not raw strings
+    TCSha256State_t sha256_ctx = {};
+    uint8_t hash[32] = {};
+    tc_sha256_init(sha256_ctx)
+    tc_sha256_update(sha256_ctx, buf ,6);
+    tc_sha256_final(hash,sha256_ctx);
+
     if (memcmp(buf, ATTEST_HASH, 32) == 0) {
         print_debug("Pin Accepted!\n");
         return error_t::SUCCESS;
@@ -561,6 +567,12 @@ static error_t validate_token() {
     recv_input("Enter token: ", buf, sizeof(buf));
 
     // TODO: Ezequiel and Cam, compare hashes, not raw strings
+    TCSha256State_t sha256_ctx = {};
+    uint8_t hash[32] = {};
+    tc_sha256_init(sha256_ctx)
+    tc_sha256_update(sha256_ctx, buf ,16);
+    tc_sha256_final(hash,sha256_ctx);
+    
     if (memcmp(buf, REPLACEMENT_HASH, 32) == 0) {
         print_debug("Token Accepted!\n");
         return error_t::SUCCESS;
