@@ -20,7 +20,7 @@ void recv_input(const char *const msg, char *const buf, const size_t buflen) {
         ch = getchar();
         buf[i] = ch;
         ++i;
-    } while (ch != '\n' && i < buflen - 1);
+    } while (ch != '\n' && i < buflen);
     buf[i - 1] = '\0';
     printf("\n");
 }
