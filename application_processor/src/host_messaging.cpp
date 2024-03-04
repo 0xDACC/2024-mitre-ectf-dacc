@@ -10,7 +10,6 @@
  */
 #include "host_messaging.h"
 
-// Print a message through USB UART and then receive a line over USB UART
 void recv_input(const char *const msg, char *const buf, const size_t buflen) {
     print_debug("%s", msg);
     print_ack();
@@ -24,7 +23,22 @@ void recv_input(const char *const msg, char *const buf, const size_t buflen) {
     buf[i - 1] = '\0';
     printf("\n");
 }
-// Prints a buffer of bytes as a hex string
+
+void recv_input(const char *const msg, uint8_t *const buf,
+                const size_t buflen) {
+    print_debug("%s", msg);
+    print_ack();
+    size_t i = 0;
+    int ch = 0;
+    do {
+        ch = getchar();
+        buf[i] = ch;
+        ++i;
+    } while (ch != '\n' && i < buflen);
+    buf[i - 1] = '\0';
+    printf("\n");
+}
+
 void print_hex(const uint8_t *const buf, const size_t len) {
     for (size_t i = 0; i < len; ++i) {
         printf("%02x", buf[i]);
