@@ -17,7 +17,7 @@
 - [ ] Must take <3s
 - [ ] Completed All Objectives
 
-## Replace (Ezquiel + Cam)
+## Replace (Ezequiel + Cam)
 
 - [ ] Replacement token - 16 byte integer
 - [ ] Store replacement token as SHA256 hash

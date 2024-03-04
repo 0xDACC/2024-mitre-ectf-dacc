@@ -547,7 +547,7 @@ static error_t validate_pin() {
     char buf[7] = {};
     recv_input("Enter pin: ", buf, sizeof(buf));
 
-    // TODO: Ezquiel and Cam, compare hashes, not raw strings
+    // TODO: Ezequiel and Cam, compare hashes, not raw strings
     if (memcmp(buf, ATTEST_HASH, 32) == 0) {
         print_debug("Pin Accepted!\n");
         return error_t::SUCCESS;
@@ -560,7 +560,7 @@ static error_t validate_token() {
     char buf[17] = {};
     recv_input("Enter token: ", buf, sizeof(buf));
 
-    // TODO: Ezquiel and Cam, compare hashes, not raw strings
+    // TODO: Ezequiel and Cam, compare hashes, not raw strings
     if (memcmp(buf, REPLACEMENT_HASH, 32) == 0) {
         print_debug("Token Accepted!\n");
         return error_t::SUCCESS;
@@ -617,7 +617,7 @@ static void attempt_replace() {
             flash_simple_write(FLASH_ADDR, &flash_status,
                                sizeof(flash_entry_t));
 
-            // TODO: Ezquiel and Cam, implement component signatures here
+            // TODO: Ezequiel and Cam, implement component signatures here
             print_debug("Replaced 0x%08lx with 0x%08lx\n", component_id_out,
                         component_id_in);
             print_success("Replace\n");
