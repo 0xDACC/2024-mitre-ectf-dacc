@@ -75,9 +75,9 @@ using namespace i2c;
 static void secure_send(const uint8_t *const buffer, const uint8_t len) {
     uint8_t payload[sizeof(payload_t<packet_type_t::SECURE>)] = {};
     uint8_t hash[32] = {};
-    TCAesKeySched_t aes_key = {};
-    TCHmacState_t hmac_ctx = {};
-    TCSha256State_t sha256_ctx = {};
+    tc_aes_key_sched_struct aes_key = {};
+    tc_hmac_state_struct hmac_ctx = {};
+    tc_sha256_state_struct sha256_ctx = {};
 
     uint8_t hmac[32] = {};
 
@@ -88,24 +88,24 @@ static void secure_send(const uint8_t *const buffer, const uint8_t len) {
     payload[1] = len;
     memcpy(&payload[2], &nonce, 0x04);
     memcpy(&payload[6], buffer, len);
-    tc_hmac_init(hmac_ctx);
-    tc_hmac_set_key(hmac_ctx, HMAC_KEY, 32);
-    tc_hmac_update(hmac_ctx, &payload[0], 262);
-    tc_hmac_final(hmac, 32, hmac_ctx);
+    tc_hmac_init(&hmac_ctx);
+    tc_hmac_set_key(&hmac_ctx, HMAC_KEY, 32);
+    tc_hmac_update(&hmac_ctx, &payload[0], 262);
+    tc_hmac_final(hmac, 32, &hmac_ctx);
     memcpy(&payload[262], hmac, 32);
 
-    tc_sha256_init(sha256_ctx);
-    tc_sha256_update(sha256_ctx, shared_secret, 32);
-    tc_sha256_final(hash, sha256_ctx);
+    tc_sha256_init(&sha256_ctx);
+    tc_sha256_update(&sha256_ctx, shared_secret, 32);
+    tc_sha256_final(hash, &sha256_ctx);
 
     if (ctr[2] != 0xDA && ctr[3] != 0xCC) {
         memcpy(ctr, "\x00X\xDA\xCC\x00X\xDA\xCC", 8);
         memcpy(&ctr[8], &hash[16], 0x8);
     }
-    tc_aes128_set_encrypt_key(aes_key, hash);
+    tc_aes128_set_encrypt_key(&aes_key, hash);
     tc_ctr_mode(reinterpret_cast<uint8_t *>(&tx_packet.payload),
                 sizeof(tx_packet.payload), payload, sizeof(payload), ctr,
-                aes_key);
+                &aes_key);
 
     tx_packet.header.checksum =
         calc_checksum(&tx_packet.payload, sizeof(tx_packet.payload));
@@ -127,9 +127,9 @@ static void secure_send(const uint8_t *const buffer, const uint8_t len) {
 static int secure_receive(uint8_t *const buffer) {
     uint8_t payload[sizeof(payload_t<packet_type_t::SECURE>)] = {};
     uint8_t hash[32] = {};
-    TCAesKeySched_t aes_key = {};
-    TCHmacState_t hmac_ctx = {};
-    TCSha256State_t sha256_ctx = {};
+    tc_aes_key_sched_struct aes_key = {};
+    tc_hmac_state_struct hmac_ctx = {};
+    tc_sha256_state_struct sha256_ctx = {};
 
     uint8_t hmac[32] = {};
 
@@ -156,24 +156,24 @@ static int secure_receive(uint8_t *const buffer) {
         return -1;
     }
 
-    tc_sha256_init(sha256_ctx);
-    tc_sha256_update(sha256_ctx, shared_secret, 32);
-    tc_sha256_final(hash, sha256_ctx);
+    tc_sha256_init(&sha256_ctx);
+    tc_sha256_update(&sha256_ctx, shared_secret, 32);
+    tc_sha256_final(hash, &sha256_ctx);
 
     if (ctr[2] != 0xDA && ctr[3] != 0xCC) {
         memcpy(ctr, "\x00X\xDA\xCC\x00X\xDA\xCC", 8);
         memcpy(&ctr[8], &hash[16], 0x8);
     }
 
-    tc_aes128_set_encrypt_key(aes_key, hash);
+    tc_aes128_set_encrypt_key(&aes_key, hash);
     tc_ctr_mode(payload, sizeof(payload),
                 reinterpret_cast<uint8_t *>(&rx_packet.payload),
-                sizeof(rx_packet.payload), ctr, aes_key);
+                sizeof(rx_packet.payload), ctr, &aes_key);
 
-    tc_hmac_init(hmac_ctx);
-    tc_hmac_set_key(hmac_ctx, HMAC_KEY, 32);
-    tc_hmac_update(hmac_ctx, &payload[0], 262);
-    tc_hmac_final(hmac, 32, hmac_ctx);
+    tc_hmac_init(&hmac_ctx);
+    tc_hmac_set_key(&hmac_ctx, HMAC_KEY, 32);
+    tc_hmac_update(&hmac_ctx, &payload[0], 262);
+    tc_hmac_final(hmac, 32, &hmac_ctx);
 
     if (payload[0] != static_cast<uint8_t>(packet_magic_t::DECRYPTED)) {
         // Invalid payload
@@ -193,25 +193,25 @@ static int secure_receive(uint8_t *const buffer) {
     payload[1] = 0;
     memcpy(&payload[2], &nonce, 0x04);
 
-    tc_hmac_init(hmac_ctx);
-    tc_hmac_set_key(hmac_ctx, HMAC_KEY, 32);
-    tc_hmac_update(hmac_ctx, &payload[0], 262);
-    tc_hmac_final(hmac, 32, hmac_ctx);
+    tc_hmac_init(&hmac_ctx);
+    tc_hmac_set_key(&hmac_ctx, HMAC_KEY, 32);
+    tc_hmac_update(&hmac_ctx, &payload[0], 262);
+    tc_hmac_final(hmac, 32, &hmac_ctx);
     memcpy(&payload[262], hmac, 32);
 
-    tc_sha256_init(sha256_ctx);
-    tc_sha256_update(sha256_ctx, shared_secret, 32);
-    tc_sha256_final(hash, sha256_ctx);
+    tc_sha256_init(&sha256_ctx);
+    tc_sha256_update(&sha256_ctx, shared_secret, 32);
+    tc_sha256_final(hash, &sha256_ctx);
 
     if (ctr[2] != 0xDA && ctr[3] != 0xCC) {
         memcpy(ctr, "\x00X\xDA\xCC\x00X\xDA\xCC", 8);
         memcpy(&ctr[8], &hash[16], 0x8);
     }
 
-    tc_aes128_set_encrypt_key(aes_key, hash);
+    tc_aes128_set_encrypt_key(&aes_key, hash);
     tc_ctr_mode(reinterpret_cast<uint8_t *>(&tx_packet.payload),
                 sizeof(tx_packet.payload), payload, sizeof(payload), ctr,
-                aes_key);
+                &aes_key);
 
     tx_packet.header.checksum =
         calc_checksum(&tx_packet.payload, sizeof(tx_packet.payload));
@@ -405,13 +405,13 @@ static error_t process_kex(const uint8_t *const data) {
 
     const uint32_t expected_checksum =
         calc_checksum(&rx_packet.payload, sizeof(rx_packet.payload));
-    TCSha256State_t sha256_ctx = {};
+    tc_sha256_state_struct sha256_ctx = {};
 
     uint8_t expected_hash[32] = {};
-    tc_sha256_init(sha256_ctx);
-    tc_sha256_update(sha256_ctx, rx_packet.payload.material,
+    tc_sha256_init(&sha256_ctx);
+    tc_sha256_update(&sha256_ctx, rx_packet.payload.material,
                      sizeof(rx_packet.payload.material));
-    tc_sha256_final(expected_hash, sha256_ctx);
+    tc_sha256_final(expected_hash, &sha256_ctx);
 
     if (rx_packet.header.checksum != expected_checksum) {
         // Checksum failed
@@ -439,10 +439,10 @@ static error_t process_kex(const uint8_t *const data) {
                             uECC_secp256r1());
 
     sha256_ctx = {};
-    tc_sha256_init(sha256_ctx);
-    tc_sha256_update(sha256_ctx, tx_packet.payload.material,
+    tc_sha256_init(&sha256_ctx);
+    tc_sha256_update(&sha256_ctx, tx_packet.payload.material,
                      sizeof(tx_packet.payload.material));
-    tc_sha256_final(tx_packet.payload.hash, sha256_ctx);
+    tc_sha256_final(tx_packet.payload.hash, &sha256_ctx);
 
     tx_packet.header.checksum =
         calc_checksum(&tx_packet.payload, sizeof(tx_packet.payload));

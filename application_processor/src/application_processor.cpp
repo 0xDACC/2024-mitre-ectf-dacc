@@ -95,9 +95,9 @@ static int secure_send(const uint8_t address, const uint8_t *const buffer,
 
     uint8_t payload[sizeof(payload_t<packet_type_t::SECURE>)] = {};
     uint8_t hash[32] = {};
-    TCAesKeySched_t aes_key = {};
-    TCHmacState_t hmac_ctx = {};
-    TCSha256State_t sha256_ctx = {};
+    tc_aes_key_sched_struct aes_key = {};
+    tc_hmac_state_struct hmac_ctx = {};
+    tc_sha256_state_struct sha256_ctx = {};
 
     uint8_t hmac[32] = {};
 
@@ -112,24 +112,24 @@ static int secure_send(const uint8_t address, const uint8_t *const buffer,
     payload[1] = len;
     memcpy(&payload[2], &nonces[index], 0x04);
     memcpy(&payload[6], buffer, len);
-    tc_hmac_init(hmac_ctx);
-    tc_hmac_set_key(hmac_ctx, HMAC_KEY, 32);
-    tc_hmac_update(hmac_ctx, &payload[0], 262);
-    tc_hmac_final(hmac, 32, hmac_ctx);
+    tc_hmac_init(&hmac_ctx);
+    tc_hmac_set_key(&hmac_ctx, HMAC_KEY, 32);
+    tc_hmac_update(&hmac_ctx, &payload[0], 262);
+    tc_hmac_final(hmac, 32, &hmac_ctx);
     memcpy(&payload[262], hmac, 32);
 
-    tc_sha256_init(sha256_ctx);
-    tc_sha256_update(sha256_ctx, shared_secrets[index], 32);
-    tc_sha256_final(hash, sha256_ctx);
+    tc_sha256_init(&sha256_ctx);
+    tc_sha256_update(&sha256_ctx, shared_secrets[index], 32);
+    tc_sha256_final(hash, &sha256_ctx);
 
     if (ctrs[index][2] != 0xDA && ctrs[index][3] != 0xCC) {
         memcpy(ctrs[index], "\x00X\xDA\xCC\x00X\xDA\xCC", 8);
         memcpy(&ctrs[index][8], &hash[16], 0x8);
     }
-    tc_aes128_set_encrypt_key(aes_key, hash);
+    tc_aes128_set_encrypt_key(&aes_key, hash);
     tc_ctr_mode(reinterpret_cast<uint8_t *>(&tx_packet.payload),
                 sizeof(tx_packet.payload), payload, sizeof(payload),
-                ctrs[index], aes_key);
+                ctrs[index], &aes_key);
 
     tx_packet.header.checksum =
         calc_checksum(&tx_packet.payload, sizeof(tx_packet.payload));
@@ -164,9 +164,9 @@ static int secure_receive(const i2c_addr_t address, uint8_t *const buffer) {
 
     uint8_t payload[sizeof(payload_t<packet_type_t::SECURE>)] = {};
     uint8_t hash[32] = {};
-    TCAesKeySched_t aes_key = {};
-    TCHmacState_t hmac_ctx = {};
-    TCSha256State_t sha256_ctx = {};
+    tc_aes_key_sched_struct aes_key = {};
+    tc_hmac_state_struct hmac_ctx = {};
+    tc_sha256_state_struct sha256_ctx = {};
 
     uint8_t hmac[32] = {};
 
@@ -181,25 +181,25 @@ static int secure_receive(const i2c_addr_t address, uint8_t *const buffer) {
     payload[1] = 0;
     memcpy(&payload[2], &nonces[index], 0x04);
 
-    tc_hmac_init(hmac_ctx);
-    tc_hmac_set_key(hmac_ctx, HMAC_KEY, 32);
-    tc_hmac_update(hmac_ctx, &payload[0], 262);
-    tc_hmac_final(hmac, 32, hmac_ctx);
+    tc_hmac_init(&hmac_ctx);
+    tc_hmac_set_key(&hmac_ctx, HMAC_KEY, 32);
+    tc_hmac_update(&hmac_ctx, &payload[0], 262);
+    tc_hmac_final(hmac, 32, &hmac_ctx);
     memcpy(&payload[262], hmac, 32);
 
-    tc_sha256_init(sha256_ctx);
-    tc_sha256_update(sha256_ctx, shared_secrets[index], 32);
-    tc_sha256_final(hash, sha256_ctx);
+    tc_sha256_init(&sha256_ctx);
+    tc_sha256_update(&sha256_ctx, shared_secrets[index], 32);
+    tc_sha256_final(hash, &sha256_ctx);
 
     if (ctrs[index][2] != 0xDA && ctrs[index][3] != 0xCC) {
         memcpy(ctrs[index], "\x00X\xDA\xCC\x00X\xDA\xCC", 8);
         memcpy(&ctrs[index][8], &hash[16], 0x8);
     }
 
-    tc_aes128_set_encrypt_key(aes_key, hash);
+    tc_aes128_set_encrypt_key(&aes_key, hash);
     tc_ctr_mode(reinterpret_cast<uint8_t *>(&tx_packet.payload),
                 sizeof(tx_packet.payload), payload, sizeof(payload),
-                ctrs[index], aes_key);
+                ctrs[index], &aes_key);
 
     tx_packet.header.checksum =
         calc_checksum(&tx_packet.payload, sizeof(tx_packet.payload));
@@ -219,19 +219,19 @@ static int secure_receive(const i2c_addr_t address, uint8_t *const buffer) {
         return -1;
     }
 
-    tc_sha256_init(sha256_ctx);
-    tc_sha256_update(sha256_ctx, shared_secrets[index], 32);
-    tc_sha256_final(hash, sha256_ctx);
+    tc_sha256_init(&sha256_ctx);
+    tc_sha256_update(&sha256_ctx, shared_secrets[index], 32);
+    tc_sha256_final(hash, &sha256_ctx);
 
-    tc_aes128_set_encrypt_key(aes_key, hash);
+    tc_aes128_set_encrypt_key(&aes_key, hash);
     tc_ctr_mode(payload, sizeof(payload),
                 reinterpret_cast<const uint8_t *>(&rx_packet.payload),
-                sizeof(rx_packet.payload), ctrs[index], aes_key);
+                sizeof(rx_packet.payload), ctrs[index], &aes_key);
 
-    tc_hmac_init(hmac_ctx);
-    tc_hmac_set_key(hmac_ctx, HMAC_KEY, 32);
-    tc_hmac_update(hmac_ctx, &payload[0], 262);
-    tc_hmac_final(hmac, 32, hmac_ctx);
+    tc_hmac_init(&hmac_ctx);
+    tc_hmac_set_key(&hmac_ctx, HMAC_KEY, 32);
+    tc_hmac_update(&hmac_ctx, &payload[0], 262);
+    tc_hmac_final(hmac, 32, &hmac_ctx);
 
     if (payload[0] != static_cast<uint8_t>(packet_magic_t::DECRYPTED)) {
         // Invalid payload
@@ -471,10 +471,10 @@ static error_t perform_kex(const uint8_t addr) {
     uECC_make_key(public_keys[index], private_keys[index], uECC_secp256r1());
 
     uint8_t hash[32] = {};
-    TCSha256State_t sha256_ctx = {};
-    tc_sha256_init(sha256_ctx);
-    tc_sha256_update(sha256_ctx, public_keys[index], 0x40);
-    tc_sha256_final(hash, sha256_ctx);
+    tc_sha256_state_struct sha256_ctx = {};
+    tc_sha256_init(&sha256_ctx);
+    tc_sha256_update(&sha256_ctx, public_keys[index], 0x40);
+    tc_sha256_final(hash, &sha256_ctx);
 
     memcpy(tx_packet.payload.material, public_keys[index], 0x40);
     memcpy(tx_packet.payload.hash, hash, 0x20);
@@ -488,9 +488,9 @@ static error_t perform_kex(const uint8_t addr) {
     const uint32_t expected_checksum =
         calc_checksum(&rx_packet.payload, sizeof(rx_packet.payload));
     sha256_ctx = {};
-    tc_sha256_init(sha256_ctx);
-    tc_sha256_update(sha256_ctx, rx_packet.payload.material, 0x40);
-    tc_sha256_final(hash, sha256_ctx);
+    tc_sha256_init(&sha256_ctx);
+    tc_sha256_update(&sha256_ctx, rx_packet.payload.material, 0x40);
+    tc_sha256_final(hash, &sha256_ctx);
 
     if (rx_packet.header.magic != packet_magic_t::KEX) {
         // Invalid response
@@ -544,17 +544,17 @@ void boot() {
 }
 
 static error_t validate_pin() {
-    char buf[7] = {};
+    uint8_t buf[7] = {};
     recv_input("Enter pin: ", buf, sizeof(buf));
 
     // TODO: Ezequiel and Cam, compare hashes, not raw strings
-    TCSha256State_t sha256_ctx = {};
+    tc_sha256_state_struct sha256_ctx = {};
     uint8_t hash[32] = {};
-    tc_sha256_init(sha256_ctx)
-    tc_sha256_update(sha256_ctx, buf ,6);
-    tc_sha256_final(hash,sha256_ctx);
+    tc_sha256_init(&sha256_ctx);
+    tc_sha256_update(&sha256_ctx, buf, 6);
+    tc_sha256_final(hash, &sha256_ctx);
 
-    if (memcmp(buf, ATTEST_HASH, 32) == 0) {
+    if (memcmp(hash, ATTEST_HASH, 32) == 0) {
         print_debug("Pin Accepted!\n");
         return error_t::SUCCESS;
     }
@@ -563,17 +563,17 @@ static error_t validate_pin() {
 }
 
 static error_t validate_token() {
-    char buf[17] = {};
+    uint8_t buf[17] = {};
     recv_input("Enter token: ", buf, sizeof(buf));
 
     // TODO: Ezequiel and Cam, compare hashes, not raw strings
-    TCSha256State_t sha256_ctx = {};
+    tc_sha256_state_struct sha256_ctx = {};
     uint8_t hash[32] = {};
-    tc_sha256_init(sha256_ctx)
-    tc_sha256_update(sha256_ctx, buf ,16);
-    tc_sha256_final(hash,sha256_ctx);
-    
-    if (memcmp(buf, REPLACEMENT_HASH, 32) == 0) {
+    tc_sha256_init(&sha256_ctx);
+    tc_sha256_update(&sha256_ctx, buf, 16);
+    tc_sha256_final(hash, &sha256_ctx);
+
+    if (memcmp(hash, REPLACEMENT_HASH, 32) == 0) {
         print_debug("Token Accepted!\n");
         return error_t::SUCCESS;
     }
