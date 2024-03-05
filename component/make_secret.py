@@ -143,9 +143,6 @@ attest_date = attest_date.hex()
 attest_cust = attest_cust.hex()
 attest_key = attest_key.hex()
 attest_nonce = attest_nonce.hex()
-print(
-    f"Attestation Params:\n{attest_key=}\n{attest_nonce=}\n{attest_loc=}\n{attest_date=}\n{attest_cust=}\n"
-)
 
 input_component.close()
 output.close()

@@ -254,11 +254,15 @@ static void boot() {
 
 // Handle a transaction from the AP
 static error_t component_process_cmd(const uint8_t *const data) {
+    printf("Processing command\n");
     if (data == nullptr) {
+        printf("Error: Null data received\n");
         return error_t::ERROR;
     }
+    printf("Processing command %d\n", +data[0]);
     switch (static_cast<packet_magic_t>(data[0])) {
     case packet_magic_t::ATTEST:
+        printf("Processing attest\n");
         return process_attest(data);
         break;
     case packet_magic_t::BOOT:
@@ -268,6 +272,7 @@ static error_t component_process_cmd(const uint8_t *const data) {
         return process_kex(data);
         break;
     case packet_magic_t::LIST:
+        printf("Processing list\n");
         return process_list(data);
         break;
     case packet_magic_t::ENCRYPTED:
@@ -319,8 +324,8 @@ static error_t process_boot(const uint8_t *const data) {
 }
 
 static error_t process_list(const uint8_t *const data) {
-
-    packet_t<packet_type_t::LIST_COMMAND> rx_packet;
+    printf("Processing list\n");
+    packet_t<packet_type_t::LIST_COMMAND> rx_packet = {};
     rx_packet.header.magic = packet_magic_t::LIST;
 
     memcpy(&rx_packet.header.checksum, &data[1], 0x04);
@@ -335,7 +340,7 @@ static error_t process_list(const uint8_t *const data) {
         // Invalid payload length
         return error_t::ERROR;
     }
-    packet_t<packet_type_t::LIST_ACK> tx_packet;
+    packet_t<packet_type_t::LIST_ACK> tx_packet = {};
     tx_packet.header.magic = packet_magic_t::LIST_ACK;
     tx_packet.payload.len = 0x04;
 
@@ -356,7 +361,7 @@ static error_t process_validate(const uint8_t *const data, const uint32_t len) {
 }
 
 static error_t process_attest(const uint8_t *const data) {
-    packet_t<packet_type_t::ATTEST_COMMAND> rx_packet;
+    packet_t<packet_type_t::ATTEST_COMMAND> rx_packet = {};
     rx_packet.header.magic = packet_magic_t::ATTEST;
 
     memcpy(&rx_packet.header.checksum, &data[1], 0x04);
@@ -379,7 +384,7 @@ static error_t process_attest(const uint8_t *const data) {
         return error_t::ERROR;
     }
 
-    packet_t<packet_type_t::ATTEST_ACK> tx_packet;
+    packet_t<packet_type_t::ATTEST_ACK> tx_packet = {};
     tx_packet.header.magic = packet_magic_t::ATTEST_ACK;
     tx_packet.payload.len = 0xC0;
 
@@ -392,6 +397,7 @@ static error_t process_attest(const uint8_t *const data) {
 
     tx_packet.header.checksum =
         calc_checksum(&tx_packet.payload, sizeof(tx_packet.payload));
+    printf("Sending Attest ACK\n");
     send_packet<packet_type_t::ATTEST_ACK>(tx_packet);
     return error_t::SUCCESS;
 }

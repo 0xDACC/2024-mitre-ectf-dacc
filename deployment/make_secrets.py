@@ -6,10 +6,12 @@ from cryptography.hazmat.primitives.asymmetric import ec
 from cryptography.hazmat.primitives.serialization import Encoding, PublicFormat
 
 output = open("global_secrets_secure.h", "wt", encoding="utf-8")
-output.write("""
+output.write(
+    """
 #include <stdint.h>
 #pragma once
-""")
+"""
+)
 
 
 def gen_boot_keypair_A() -> tuple[bytes, bytes]:
@@ -21,9 +23,12 @@ def gen_boot_keypair_A() -> tuple[bytes, bytes]:
     key: ec.EllipticCurvePrivateKey = ec.generate_private_key(
         ec.SECP256K1(), default_backend()
     )
-    return key.private_numbers().private_value.to_bytes(
-        32, "big"
-    ), key.public_key().public_bytes(Encoding.X962, PublicFormat.UncompressedPoint)[1:]
+    return (
+        key.private_numbers().private_value.to_bytes(32, "big"),
+        key.public_key().public_bytes(Encoding.X962, PublicFormat.UncompressedPoint)[
+            1:
+        ],
+    )
 
 
 def gen_boot_keypair_C() -> tuple[bytes, bytes]:
@@ -35,9 +40,12 @@ def gen_boot_keypair_C() -> tuple[bytes, bytes]:
     key: ec.EllipticCurvePrivateKey = ec.generate_private_key(
         ec.SECP256K1(), default_backend()
     )
-    return key.private_numbers().private_value.to_bytes(
-        32, "big"
-    ), key.public_key().public_bytes(Encoding.X962, PublicFormat.UncompressedPoint)[1:]
+    return (
+        key.private_numbers().private_value.to_bytes(32, "big"),
+        key.public_key().public_bytes(Encoding.X962, PublicFormat.UncompressedPoint)[
+            1:
+        ],
+    )
 
 
 def gen_replacement_keypair() -> tuple[bytes, bytes]:
@@ -49,9 +57,12 @@ def gen_replacement_keypair() -> tuple[bytes, bytes]:
     key: ec.EllipticCurvePrivateKey = ec.generate_private_key(
         ec.SECP256K1(), default_backend()
     )
-    return key.private_numbers().private_value.to_bytes(
-        32, "big"
-    ), key.public_key().public_bytes(Encoding.X962, PublicFormat.UncompressedPoint)[1:]
+    return (
+        key.private_numbers().private_value.to_bytes(32, "big"),
+        key.public_key().public_bytes(Encoding.X962, PublicFormat.UncompressedPoint)[
+            1:
+        ],
+    )
 
 
 def write(type: str, name: str, values: list[str]) -> None:
@@ -63,8 +74,7 @@ def write(type: str, name: str, values: list[str]) -> None:
         values (list[str]): Value of the constant
     """
     if "[" in type and "]" in type:
-        output.write(
-            f"constexpr const {type.split('[')[0]} {name}[{len(values)}] = {{")
+        output.write(f"constexpr const {type.split('[')[0]} {name}[{len(values)}] = {{")
         for value in values:
             output.write(f"{value},")
         output.write("};\n")
@@ -75,7 +85,6 @@ def write(type: str, name: str, values: list[str]) -> None:
 replacement_pub, replacement_priv = gen_replacement_keypair()
 replacement_pub = replacement_pub.hex()
 replacement_priv = replacement_priv.hex()
-print(f"Replacement Params:\n{replacement_pub=}\n{replacement_priv=}\n")
 
 keypair_A_priv, keypair_A_pub = gen_boot_keypair_A()
 keypair_C_priv, keypair_C_pub = gen_boot_keypair_C()
@@ -90,15 +99,10 @@ write("uint8_t[]", "HMAC_KEY", [f"{b}" for b in hmac_key])
 
 keypair_A_priv = keypair_A_priv.hex()
 keypair_A_pub = keypair_A_pub.hex()
-print(f"Keypair A:\n{keypair_A_priv=}\n{keypair_A_pub=}\n")
-
 
 keypair_C_priv = keypair_C_priv.hex()
 keypair_C_pub = keypair_C_pub.hex()
-print(f"Keypair C:\n{keypair_C_priv=}\n{keypair_C_pub=}\n")
-
 
 # write("uint8_t[]", "REPLACEMENT_PUB", [f"{b}" for b in attest_key])
-
 
 output.close()

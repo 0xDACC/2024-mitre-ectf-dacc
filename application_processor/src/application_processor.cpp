@@ -551,7 +551,9 @@ static error_t validate_pin() {
     tc_sha256_state_struct sha256_ctx = {};
     uint8_t hash[32] = {};
     tc_sha256_init(&sha256_ctx);
-    tc_sha256_update(&sha256_ctx, buf, 6);
+    for (uint32_t i = 0; i < ITERATIONS; ++i) {
+        tc_sha256_update(&sha256_ctx, buf, 6);
+    }
     tc_sha256_final(hash, &sha256_ctx);
 
     if (memcmp(hash, ATTEST_HASH, 32) == 0) {

@@ -51,19 +51,18 @@ error_t i2c_simple_peripheral_init(const uint8_t addr, const i2c_cb_t cb) {
 }
 
 void i2c_simple_isr() {
-    LED_Toggle(LED1);
-
     const uint32_t flags = MXC_I2C1->intfl0;
 
     if ((flags & MXC_F_I2C_INTFL0_STOP) != 0) {
+        printf("STOP\n");
         // Transaction ended
         const uint8_t available = MXC_I2C_GetRXFIFOAvailable(MXC_I2C1);
-        if (available > (bufsize - rxcnt) && available != 0) {
-            MXC_I2C_ReadRXFIFO(MXC_I2C1, rxbuf + rxcnt, bufsize - rxcnt);
-            rxcnt += bufsize - rxcnt;
+        if (available > (bufsize - rxcnt) && available != 0 &&
+            rxcnt < bufsize) {
+            rxcnt +=
+                MXC_I2C_ReadRXFIFO(MXC_I2C1, rxbuf + rxcnt, bufsize - rxcnt);
         } else {
-            MXC_I2C_ReadRXFIFO(MXC_I2C1, rxbuf + rxcnt, available);
-            rxcnt += available;
+            rxcnt += MXC_I2C_ReadRXFIFO(MXC_I2C1, rxbuf + rxcnt, available);
         }
 
         MXC_I2C_DisableInt(MXC_I2C1, MXC_F_I2C_INTEN0_RX_THD, 0);
@@ -84,6 +83,7 @@ void i2c_simple_isr() {
 
     if ((flags & MXC_F_I2C_INTEN0_TX_THD) != 0 &&
         (MXC_I2C1->inten0 & MXC_F_I2C_INTEN0_TX_THD) != 0) {
+        printf("READ\n");
         // Master reading more from us
 
         if ((flags & MXC_F_I2C_INTFL0_TX_LOCKOUT) != 0) {
@@ -92,21 +92,26 @@ void i2c_simple_isr() {
 
         const uint8_t available = MXC_I2C_GetTXFIFOAvailable(MXC_I2C1);
         if (txsize == 0) {
-            LED_Toggle(LED2);
             // Call the callback function
+            printf("CALLING CALLBACK\n");
             if (call_processing_callback() != error_t::SUCCESS) {
+                printf("Failed to call processing callback\n");
                 return;
             }
+            printf("CALLBACK SUCCESS\n");
         }
-        if (available > (txsize - txcnt) && txsize > 0) {
-            MXC_I2C_WriteTXFIFO(MXC_I2C1, txbuf + txcnt, txsize - txcnt);
-            txcnt += txsize - txcnt;
+        printf("Available: %d\n", available);
+        printf("TXCNT: %d\n", txcnt);
+        printf("TXSIZE: %d\n", txsize);
+
+        if (available > (txsize - txcnt) && txsize > 0 && txcnt < txsize) {
+            txcnt +=
+                MXC_I2C_WriteTXFIFO(MXC_I2C1, txbuf + txcnt, txsize - txcnt);
         } else if (txsize > 0) {
-            MXC_I2C_WriteTXFIFO(MXC_I2C1, txbuf + txcnt, available);
-            txcnt += available;
+            txcnt += MXC_I2C_WriteTXFIFO(MXC_I2C1, txbuf + txcnt, available);
         }
 
-        if (txcnt >= txsize - 1 && txsize > 0) {
+        if (txcnt >= txsize && txsize > 0) {
             MXC_I2C_DisableInt(MXC_I2C1, MXC_F_I2C_INTEN0_TX_THD, 0);
         }
 
@@ -114,6 +119,7 @@ void i2c_simple_isr() {
     }
 
     if ((flags & MXC_F_I2C_INTFL0_WR_ADDR_MATCH) != 0) {
+        printf("WRITE\n");
         // Master requested a read from us
         MXC_I2C_ClearFlags(MXC_I2C1, MXC_F_I2C_INTFL0_WR_ADDR_MATCH, 0);
 
@@ -121,12 +127,12 @@ void i2c_simple_isr() {
             MXC_I2C_ClearFlags(MXC_I2C1, MXC_F_I2C_INTFL0_TX_LOCKOUT, 0);
 
             const uint8_t available = MXC_I2C_GetTXFIFOAvailable(MXC_I2C1);
-            if (available > (txsize - txcnt) && txsize > 0) {
-                MXC_I2C_WriteTXFIFO(MXC_I2C1, txbuf + txcnt, txsize - txcnt);
-                txcnt += txsize - txcnt;
+            if (available > (txsize - txcnt) && txsize > 0 && txcnt < txsize) {
+                txcnt += MXC_I2C_WriteTXFIFO(MXC_I2C1, txbuf + txcnt,
+                                             txsize - txcnt);
             } else if (txsize > 0) {
-                MXC_I2C_WriteTXFIFO(MXC_I2C1, txbuf + txcnt, available);
-                txcnt += available;
+                txcnt +=
+                    MXC_I2C_WriteTXFIFO(MXC_I2C1, txbuf + txcnt, available);
             }
 
             MXC_I2C_EnableInt(MXC_I2C1, MXC_F_I2C_INTEN0_TX_THD, 0);
@@ -134,6 +140,7 @@ void i2c_simple_isr() {
     }
 
     if ((flags & MXC_F_I2C_INTFL0_RD_ADDR_MATCH) != 0) {
+        printf("WRITE ST\n");
         // Master requested a write to us
 
         MXC_I2C_EnableInt(MXC_I2C1, MXC_F_I2C_INTEN0_RX_THD, 0);
@@ -142,15 +149,15 @@ void i2c_simple_isr() {
     }
 
     if ((flags & MXC_F_I2C_INTEN0_RX_THD) != 0) {
+        printf("READ ST\n");
         // Master writing more to us
 
         const uint8_t available = MXC_I2C_GetRXFIFOAvailable(MXC_I2C1);
         if (available > (bufsize - rxcnt)) {
-            MXC_I2C_ReadRXFIFO(MXC_I2C1, rxbuf + rxcnt, bufsize - rxcnt);
-            rxcnt += bufsize - rxcnt;
+            rxcnt +=
+                MXC_I2C_ReadRXFIFO(MXC_I2C1, rxbuf + rxcnt, bufsize - rxcnt);
         } else {
-            MXC_I2C_ReadRXFIFO(MXC_I2C1, rxbuf + rxcnt, available);
-            rxcnt += available;
+            rxcnt += MXC_I2C_ReadRXFIFO(MXC_I2C1, rxbuf + rxcnt, available);
         }
 
         MXC_I2C_ClearFlags(MXC_I2C1, MXC_F_I2C_INTFL0_RX_THD, 0);

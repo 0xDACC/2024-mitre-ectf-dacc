@@ -60,7 +60,7 @@ packet_t<R> send_i2c_master_tx(const i2c_addr_t addr, packet_t<T> packet) {
     request.restart = 0;
     request.callback = nullptr;
 
-    int error = MXC_I2C_MasterTransaction(&request);
+    const int error = MXC_I2C_MasterTransaction(&request);
     if (error == E_NO_ERROR) {
         rx_packet.header.magic = static_cast<packet_magic_t>(rxbuf[0]);
         memcpy(&rx_packet.header.checksum, &rxbuf[1], sizeof(uint32_t));
