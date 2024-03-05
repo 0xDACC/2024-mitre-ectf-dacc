@@ -23,11 +23,13 @@ enum class packet_magic_t : uint8_t {
 	LIST,
 	LIST_ACK,
 	ATTEST,
+	ATTEST_ACK,
 	BOOT,
+	BOOT_ACK,
 	DECRYPTED,
 	ENCRYPTED,
-	ATTEST_ACK,
-	BOOT_ACK
+	REPLACE,
+	REPLACE_ACK,
 };
 
 /**
@@ -36,14 +38,16 @@ enum class packet_magic_t : uint8_t {
  */
 enum class packet_type_t : uint8_t {
 	ERROR,
+	KEX,
 	LIST_COMMAND,
 	LIST_ACK,
 	ATTEST_COMMAND,
-	BOOT_COMMAND,
-	SECURE,
-	KEX,
 	ATTEST_ACK,
-	BOOT_ACK
+	BOOT_COMMAND,
+	BOOT_ACK,
+	SECURE,
+	REPLACE_COMMAND,
+	REPLACE_ACK
 };
 
 /**
@@ -62,6 +66,16 @@ template<packet_type_t T> struct __packed payload_t;
  *
  */
 template<> struct __packed payload_t<packet_type_t::ERROR> {};
+
+/**
+ * @brief Key exchange packet payload
+ *
+ */
+template<> struct __packed payload_t<packet_type_t::KEX> {
+	uint8_t len;
+	uint8_t material[64];
+	uint8_t hash[32];
+};
 
 /**
  * @brief List command packet payload
@@ -91,12 +105,32 @@ template<> struct __packed payload_t<packet_type_t::ATTEST_COMMAND> {
 };
 
 /**
+ * @brief Attest ack packet payload
+ *
+ */
+template<> struct __packed payload_t<packet_type_t::ATTEST_ACK> {
+	uint8_t len;
+	uint8_t data[192];
+	uint8_t sig[65];
+};
+
+/**
  * @brief Boot command packet payload
  *
  */
 template<> struct __packed payload_t<packet_type_t::BOOT_COMMAND> {
 	uint8_t len;
 	uint8_t data[4];
+	uint8_t sig[65];
+};
+
+/**
+ * @brief Boot ack packet payload
+ *
+ */
+template<> struct __packed payload_t<packet_type_t::BOOT_ACK> {
+	uint8_t len;
+	uint8_t data[64];
 	uint8_t sig[65];
 };
 
@@ -113,33 +147,21 @@ template<> struct __packed payload_t<packet_type_t::SECURE> {
 };
 
 /**
- * @brief Key exchange packet payload
+ * @brief Replace command packet payload
  *
  */
-template<> struct __packed payload_t<packet_type_t::KEX> {
+template<> struct __packed payload_t<packet_type_t::REPLACE_COMMAND> {
 	uint8_t len;
-	uint8_t material[64];
-	uint8_t hash[32];
+	uint8_t data[32];
 };
 
 /**
- * @brief Attest ack packet payload
+ * @brief Replace ack packet payload
  *
  */
-template<> struct __packed payload_t<packet_type_t::ATTEST_ACK> {
+template<> struct __packed payload_t<packet_type_t::REPLACE_ACK> {
 	uint8_t len;
-	uint8_t data[192];
-	uint8_t sig[65];
-};
-
-/**
- * @brief Boot ack packet payload
- *
- */
-template<> struct __packed payload_t<packet_type_t::BOOT_ACK> {
-	uint8_t len;
-	uint8_t data[64];
-	uint8_t sig[65];
+	uint8_t data[65];
 };
 
 /**

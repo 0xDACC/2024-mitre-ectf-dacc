@@ -30,6 +30,7 @@
 #include "tinycrypt/ctr_mode.h"
 #include "tinycrypt/ecc.h"
 #include "tinycrypt/ecc_dh.h"
+#include "tinycrypt/ecc_dsa.h"
 #include "tinycrypt/hmac.h"
 #include "tinycrypt/sha256.h"
 
@@ -46,11 +47,12 @@
 
 // Core function definitions
 static error_t component_process_cmd(const uint8_t *const data);
-static error_t process_boot(const uint8_t *const data);
-static error_t process_list(const uint8_t *const data);
-static error_t process_validate(const uint8_t *const data);
 static error_t process_attest(const uint8_t *const data);
+static error_t process_boot(const uint8_t *const data);
 static error_t process_kex(const uint8_t *const data);
+static error_t process_list(const uint8_t *const data);
+static error_t process_replace(const uint8_t *const data);
+static error_t process_validate(const uint8_t *const data);
 
 enum class state_t { PREBOOT, POSTBOST };
 volatile state_t state = state_t::PREBOOT;
@@ -268,6 +270,9 @@ static error_t component_process_cmd(const uint8_t *const data) {
     case packet_magic_t::BOOT:
         return process_boot(data);
         break;
+    case packet_magic_t::REPLACE:
+        return process_replace(data);
+        break;
     case packet_magic_t::KEX:
         return process_kex(data);
         break;
@@ -350,6 +355,41 @@ static error_t process_list(const uint8_t *const data) {
         calc_checksum(&tx_packet.payload, sizeof(tx_packet.payload));
 
     send_packet<packet_type_t::LIST_ACK>(tx_packet);
+    return error_t::SUCCESS;
+}
+
+static error_t process_replace(const uint8_t *const data) {
+    printf("Processing replace\n");
+    packet_t<packet_type_t::REPLACE_COMMAND> rx_packet = {};
+    rx_packet.header.magic = packet_magic_t::REPLACE;
+
+    memcpy(&rx_packet.header.checksum, &data[1], 0x04);
+    memcpy(&rx_packet.payload, &data[5], sizeof(rx_packet.payload));
+
+    const uint32_t expected_checksum =
+        calc_checksum(&rx_packet.payload, sizeof(rx_packet.payload));
+    if (rx_packet.header.checksum != expected_checksum) {
+        // Checksum failed
+        return error_t::ERROR;
+    } else if (rx_packet.payload.len != 0x20) {
+        // Invalid payload length
+        return error_t::ERROR;
+    }
+
+    packet_t<packet_type_t::REPLACE_ACK> tx_packet = {};
+    tx_packet.header.magic = packet_magic_t::REPLACE_ACK;
+    tx_packet.payload.len = 0x41;
+
+    if (uECC_sign(KEYPAIR_C_PRIV, rx_packet.payload.data, 0x20,
+                  tx_packet.payload.data, uECC_secp256r1()) != 1) {
+        // Couldn't sign
+        return error_t::ERROR;
+    }
+
+    tx_packet.header.checksum =
+        calc_checksum(&tx_packet.payload, sizeof(tx_packet.payload));
+
+    send_packet<packet_type_t::REPLACE_ACK>(tx_packet);
     return error_t::SUCCESS;
 }
 

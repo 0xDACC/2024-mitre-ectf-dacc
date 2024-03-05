@@ -31,6 +31,7 @@
 #include "tinycrypt/ctr_mode.h"
 #include "tinycrypt/ecc.h"
 #include "tinycrypt/ecc_dh.h"
+#include "tinycrypt/ecc_dsa.h"
 #include "tinycrypt/hmac.h"
 #include "tinycrypt/sha256.h"
 
@@ -631,7 +632,44 @@ static void attempt_replace() {
             flash_simple_write(FLASH_ADDR, &flash_status,
                                sizeof(flash_entry_t));
 
-            // TODO: Ezequiel and Cam, implement component signatures here
+            uint8_t random[32] = {};
+            random_bytes(random, 32);
+
+            packet_t<packet_type_t::REPLACE_COMMAND> tx_packet = {};
+            tx_packet.header.magic = packet_magic_t::REPLACE;
+            tx_packet.payload.len = 0x20;
+            memcpy(tx_packet.payload.data, random, 0x20);
+
+            tx_packet.header.checksum =
+                calc_checksum(&tx_packet.payload, sizeof(tx_packet.payload));
+
+            const packet_t<packet_type_t::REPLACE_ACK> rx_packet =
+                send_i2c_master_tx<packet_type_t::REPLACE_ACK,
+                                   packet_type_t::REPLACE_COMMAND>(
+                    component_id_in, tx_packet);
+
+            if (rx_packet.header.magic != packet_magic_t::REPLACE_ACK) {
+                // Invalid response
+                print_error("Could not replace component\n");
+                return;
+            } else if (rx_packet.header.checksum !=
+                       calc_checksum(&rx_packet.payload,
+                                     sizeof(rx_packet.payload))) {
+                // Invalid checksum
+                print_error("Could not replace component\n");
+                return;
+            } else if (rx_packet.payload.len != 0x41) {
+                // Invalid payload length
+                print_error("Could not replace component\n");
+                return;
+            } else if (uECC_verify(KEYPAIR_C_PUB, random, 32,
+                                   rx_packet.payload.data,
+                                   uECC_secp256r1()) != 1) {
+                // Invalid signature
+                print_error("Could not replace component\n");
+                return;
+            }
+
             print_debug("Replaced 0x%08lx with 0x%08lx\n", component_id_out,
                         component_id_in);
             print_success("Replace\n");
