@@ -42,7 +42,7 @@ Packet Magic & Checksum & Length\tabularnewline
 \hline 
 (1 byte) & (4 bytes) & (1 byte)\tabularnewline
 \hline 
-0x4C &  & 0x00\tabularnewline
+ &  & 0x00\tabularnewline
 \hline 
 \end{tabular}\caption{List Packet}
 \end{table}
@@ -56,7 +56,7 @@ Packet Magic & Checksum & Length & Data\tabularnewline
 \hline 
 (1 byte) & (4 bytes) & (1 byte) & (4 bytes)\tabularnewline
 \hline 
-0x4D &  & 0x04 & \tabularnewline
+ &  & 0x04 & \tabularnewline
 \hline 
 \end{tabular}\caption{List Response Packet}
 \end{table}
@@ -90,7 +90,7 @@ Packet Magic & Checksum & Length & Data & Signature\tabularnewline
 \hline 
 (1 byte) & (4 bytes) & (1 byte) & (6 bytes) & (65 bytes)\tabularnewline
 \hline 
-0xAA &  & 0x06 & 0x415454455354 & \tabularnewline
+ &  & 0x06 & 0x415454455354 & \tabularnewline
 \hline 
 \end{tabular}\caption{Attestation Data Packet}
 \end{table}
@@ -106,7 +106,7 @@ Packet Magic & Checksum & Length & Attestation Data & Signature\tabularnewline
 \hline 
 (1 byte) & (4 bytes) & (1 byte) & (192 bytes) & (65 bytes)\tabularnewline
 \hline 
-0xFA &  & 0xC0 &  & \tabularnewline
+ &  & 0xC0 &  & \tabularnewline
 \hline 
 \end{tabular}\caption{Attestation ACK Packet}
 \end{table}
@@ -129,6 +129,37 @@ Packet Magic & Checksum & Length & Attestation Data & Signature\tabularnewline
 \end{enumerate}
 
 \paragraph{Meets SR3}
+
+\begin{table}
+\noindent \centering{}%
+\begin{tabular}{|c|c|c|c|}
+\hline 
+\multicolumn{2}{|c|}{Header} & \multicolumn{2}{c|}{Payload}\tabularnewline
+\hline 
+Packet Magic & Checksum & Length & Data\tabularnewline
+\hline 
+(1 byte) & (4 bytes) & (1 byte) & (32 bytes)\tabularnewline
+\hline 
+ &  & 0x20 & \tabularnewline
+\hline 
+\end{tabular}\caption{Replace Data Packet}
+\end{table}
+
+\noindent 
+\begin{table}
+\noindent \centering{}%
+\begin{tabular}{|c|c|c|c|}
+\hline 
+\multicolumn{2}{|c|}{Header} & \multicolumn{2}{c|}{Payload}\tabularnewline
+\hline 
+Packet Magic & Checksum & Length & Signature\tabularnewline
+\hline 
+(1 byte) & (4 bytes) & (1 byte) & (65 bytes)\tabularnewline
+\hline 
+ &  & 0x41 & \tabularnewline
+\hline 
+\end{tabular}\caption{Replace ACK Packet}
+\end{table}
 
 \newpage{}
 
@@ -236,7 +267,7 @@ Packet Magic & Checksum & Length & Data & Signature\tabularnewline
 \hline 
 (1 byte) & (4 bytes) & (1 byte) & (4 bytes) & (65 bytes)\tabularnewline
 \hline 
-0xBB &  & 0x04 & 0x424F4F54 & \tabularnewline
+ &  & 0x04 & 0x424F4F54 & \tabularnewline
 \hline 
 \end{tabular}\caption{Component Boot Packet}
 \end{table}
@@ -252,7 +283,7 @@ Packet Magic & Checksum & Length & Boot Message & Signature\tabularnewline
 \hline 
 (1 byte) & (4 bytes) & (1 byte) & (64 bytes) & (65 bytes)\tabularnewline
 \hline 
-0xFB &  & 0x40 &  & \tabularnewline
+ &  & 0x40 &  & \tabularnewline
 \hline 
 \end{tabular}\caption{Boot ACK Packet}
 \end{table}
@@ -298,7 +329,7 @@ Packet Magic & Checksum & Payload Magic & Length - 1 & Nonce & Data & HMAC\tabul
 \hline 
 (1 byte) & (4 bytes) & (1 byte) & (1 byte) & (4 bytes) & (256 bytes) & (32 bytes)\tabularnewline
 \hline 
-0xEE &  & 0xDD &  &  &  & \tabularnewline
+ &  & 0xDD &  &  &  & \tabularnewline
 \hline 
 \end{tabular}\caption{Encrypted I2C Packet}
 \end{table}
@@ -306,13 +337,13 @@ Packet Magic & Checksum & Payload Magic & Length - 1 & Nonce & Data & HMAC\tabul
 \centering{}%
 \begin{tabular}{|c|c|c|c|c|}
 \hline 
-\multicolumn{5}{|c|}{Key Exchange}\tabularnewline
+\multicolumn{2}{|c|}{Header} & \multicolumn{3}{c|}{Payload}\tabularnewline
 \hline 
 Packet Magic & Checksum & Length & Key Material & Key Hash\tabularnewline
 \hline 
 (1 byte) & (4 bytes) & (1 byte) & (64 bytes) & (32 bytes)\tabularnewline
 \hline 
-0x4B &  & 0x60 &  & \tabularnewline
+ &  & 0x60 &  & \tabularnewline
 \hline 
 \end{tabular}\caption{Key Exchange I2C Packet}
 \end{table}
