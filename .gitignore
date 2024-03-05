@@ -8,3 +8,4 @@
 **/global_secrets_secure.h
 **/compile_commands.json
 **/__pycache__
+poetry.lock
