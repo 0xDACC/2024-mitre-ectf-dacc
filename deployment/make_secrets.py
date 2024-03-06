@@ -74,7 +74,8 @@ def write(type: str, name: str, values: list[str]) -> None:
         values (list[str]): Value of the constant
     """
     if "[" in type and "]" in type:
-        output.write(f"constexpr const {type.split('[')[0]} {name}[{len(values)}] = {{")
+        output.write(
+            f"constexpr const {type.split('[')[0]} {name}[{len(values)}] = {{")
         for value in values:
             output.write(f"{value},")
         output.write("};\n")
@@ -90,12 +91,18 @@ keypair_A_priv, keypair_A_pub = gen_boot_keypair_A()
 keypair_C_priv, keypair_C_pub = gen_boot_keypair_C()
 
 hmac_key = secrets.token_bytes(32)
+attest_key_unwrapped = secrets.token_bytes(16)
+attest_nonce = secrets.token_bytes(16)
 
 write("uint8_t[]", "KEYPAIR_A_PUB", [f"{b}" for b in keypair_A_pub])
 write("uint8_t[]", "KEYPAIR_A_PRIV", [f"{b}" for b in keypair_A_priv])
 write("uint8_t[]", "KEYPAIR_C_PUB", [f"{b}" for b in keypair_C_pub])
 write("uint8_t[]", "KEYPAIR_C_PRIV", [f"{b}" for b in keypair_C_priv])
 write("uint8_t[]", "HMAC_KEY", [f"{b}" for b in hmac_key])
+write("uint8_t[]", "ATTEST_UNWRAPPED_NONCE", [f"{b}" for b in attest_nonce])
+
+output.write(f"//#define ATTEST_KEY_UNWRAPPED {attest_key_unwrapped.hex()}\n")
+output.write(f"//#define ATTEST_NONCE {attest_nonce.hex()}\n")
 
 keypair_A_priv = keypair_A_priv.hex()
 keypair_A_pub = keypair_A_pub.hex()

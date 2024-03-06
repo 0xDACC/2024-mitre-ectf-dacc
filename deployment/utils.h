@@ -11,6 +11,9 @@
 #ifndef UTILS
 #define UTILS
 
+#include "tinycrypt/aes.h"
+#include "tinycrypt/ctr_mode.h"
+
 #include <stdint.h>
 
 /**
@@ -19,13 +22,14 @@
  * @param unwrapped_key The unwrapped key
  * @param wrapped_key The wrapped key
  * @param wrapper_key The key to unwrap with
- * @param len The length of the key
+ * @param wrapper_nonce The nonce to unwrap with
  */
-inline void unwrap_key(
+inline void unwrap_aes_key(
 	uint8_t *unwrapped_key, const uint8_t *const wrapped_key,
-	const uint8_t *const wrapper_key, const uint32_t len) {
-	for (uint32_t i = 0; i < len; ++i) {
-		unwrapped_key[i] = wrapped_key[i] ^ wrapper_key[len - i];
-	}
+	const uint8_t *const wrapper_key, uint8_t *const wrapper_nonce) {
+	tc_aes_key_sched_struct aes_key = {};
+
+	tc_aes128_set_encrypt_key(&aes_key, wrapper_key);
+	tc_ctr_mode(unwrapped_key, 16, wrapped_key, 16, wrapper_nonce, &aes_key);
 }
 #endif /* UTILS */

@@ -402,8 +402,11 @@ static error_t boot_components() {
     return error_t::SUCCESS;
 }
 
-static error_t attest_component(const uint32_t component_id) {
+static error_t attest_component(const uint32_t component_id,
+                                const uint8_t *const unwrapped_key) {
     const i2c_addr_t addr = component_id_to_i2c_addr(component_id);
+    uint8_t ctr[16] = {};
+    memcpy(ctr, ATTEST_UNWRAPPED_NONCE, 16);
 
     packet_t<packet_type_t::ATTEST_COMMAND> tx_packet = {};
     tx_packet.header.magic = packet_magic_t::ATTEST;
@@ -449,9 +452,13 @@ static error_t attest_component(const uint32_t component_id) {
     memcpy(attest_date, rx_packet.payload.data + 0x40, 0x40);
     memcpy(attest_cust, rx_packet.payload.data + 0x80, 0x40);
 
-    // TODO: Henry and David, Decrypt attest_loc, attest_date, and attest_cust
+    tc_aes_key_sched_struct aes_key = {};
+    tc_ctr_mode(attest_loc, 0x40, rx_packet.payload.data, 0x40, ctr, &aes_key);
+    tc_ctr_mode(attest_date, 0x40, rx_packet.payload.data + 0x40, 0x40, ctr,
+                &aes_key);
+    tc_ctr_mode(attest_cust, 0x40, rx_packet.payload.data + 0x80, 0x40, ctr,
+                &aes_key);
 
-    // Print out attestation data
     print_info("C>0x%08lx\n", component_id);
     print_info("LOC>%s\nDATE>%s\nCUST>%s\n", attest_loc, attest_date,
                attest_cust);
@@ -542,27 +549,6 @@ void boot() {
         MXC_Delay(500000);
     }
 #endif
-}
-
-static error_t validate_pin() {
-    uint8_t buf[7] = {};
-    recv_input("Enter pin: ", buf, sizeof(buf));
-
-    // TODO: Ezequiel and Cam, compare hashes, not raw strings
-    tc_sha256_state_struct sha256_ctx = {};
-    uint8_t hash[32] = {};
-    tc_sha256_init(&sha256_ctx);
-    for (uint32_t i = 0; i < ITERATIONS; ++i) {
-        tc_sha256_update(&sha256_ctx, buf, 6);
-    }
-    tc_sha256_final(hash, &sha256_ctx);
-
-    if (memcmp(hash, ATTEST_HASH, 32) == 0) {
-        print_debug("Pin Accepted!\n");
-        return error_t::SUCCESS;
-    }
-    print_error("Invalid PIN!\n");
-    return error_t::ERROR;
 }
 
 static error_t validate_token() {
@@ -684,14 +670,35 @@ static void attempt_replace() {
 
 static void attempt_attest() {
     char buf[5] = {};
+    uint8_t pin[7] = {};
+    uint8_t unwrapped_key[16] = {};
+    uint8_t wrapper_iv[16] = {};
 
-    if (validate_pin() != error_t::SUCCESS) {
+    recv_input("Enter pin: ", pin, sizeof(pin));
+
+    tc_sha256_state_struct sha256_ctx = {};
+    uint8_t hash[32] = {};
+    tc_sha256_init(&sha256_ctx);
+    for (uint32_t i = 0; i < ITERATIONS; ++i) {
+        tc_sha256_update(&sha256_ctx, pin, 6);
+    }
+    tc_sha256_final(hash, &sha256_ctx);
+
+    if (memcmp(hash, ATTEST_HASH, 32) == 0) {
+        print_debug("Pin Accepted!\n");
+    } else {
+        print_error("Invalid PIN!\n");
         return;
     }
+
+    memcpy(wrapper_iv, ATTEST_WRAPPER_NONCE, 16);
+
+    unwrap_aes_key(unwrapped_key, ATTEST_KEY_WRAPPED, hash, wrapper_iv);
+
     uint32_t component_id = 0;
     recv_input("Component ID: ", buf, sizeof(buf));
     sscanf(buf, "%lx", &component_id);
-    if (attest_component(component_id) == error_t::SUCCESS) {
+    if (attest_component(component_id, unwrapped_key) == error_t::SUCCESS) {
         print_success("Attest\n");
     }
 }
