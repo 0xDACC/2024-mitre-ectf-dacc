@@ -5,8 +5,8 @@
 ### NOTE: Investigate why testing is failing here
 
 - [X] None (Doesn't need to be secure but also needs to not introduce any vulnerabilities)
-- [ ] Must take <3s
-- [ ] Completed All Objectives
+- [X] Must take <3s
+- [X] Completed All Objectives
 
 ## Attest (Henry + David)
 
@@ -19,12 +19,12 @@
 
 ## Replace (Ezequiel + Cam)
 
-- [ ] Replacement token - 16 byte integer
-- [ ] Store replacement token as SHA256 hash
-- [ ] Store predefined ECC public key and generate a random number [RNG Example](https://github.com/Analog-Devices-MSDK/msdk/tree/e20c2cfe54f3d8880d29c11390700840e7e7ba27/Examples/MAX78000/TRNG)
-- [ ] Ask for component to sign random number
-- [ ] Verify signature
-- [ ] Completed All Objectives
+- [X] Replacement token - 16 byte integer
+- [X] Store replacement token as SHA256 hash
+- [X] Store predefined ECC public key and generate a random number [RNG Example](https://github.com/Analog-Devices-MSDK/msdk/tree/e20c2cfe54f3d8880d29c11390700840e7e7ba27/Examples/MAX78000/TRNG)
+- [X] Ask for component to sign random number
+- [X] Verify signature
+- [X] Completed All Objectives
 
 ## Boot (Tyler)
 
