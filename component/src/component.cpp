@@ -254,7 +254,6 @@ static void boot() {
 #endif
 }
 
-// Handle a transaction from the AP
 static error_t component_process_cmd(const uint8_t *const data) {
     printf("Processing command\n");
     if (data == nullptr) {
@@ -262,30 +261,42 @@ static error_t component_process_cmd(const uint8_t *const data) {
         return error_t::ERROR;
     }
     printf("Processing command %d\n", +data[0]);
-    switch (static_cast<packet_magic_t>(data[0])) {
-    case packet_magic_t::ATTEST:
-        printf("Processing attest\n");
-        return process_attest(data);
-        break;
-    case packet_magic_t::BOOT:
-        return process_boot(data);
-        break;
-    case packet_magic_t::REPLACE:
-        return process_replace(data);
-        break;
-    case packet_magic_t::KEX:
-        return process_kex(data);
-        break;
-    case packet_magic_t::LIST:
-        printf("Processing list\n");
-        return process_list(data);
-        break;
-    case packet_magic_t::ENCRYPTED:
-        return state == state_t::POSTBOST ? error_t::SUCCESS : error_t::ERROR;
-        break;
-    default:
-        printf("Error: Unrecognized command received %d\n", data[0]);
-        return error_t::ERROR;
+    if (state == state_t::PREBOOT) {
+        switch (static_cast<packet_magic_t>(data[0])) {
+        case packet_magic_t::ATTEST:
+            printf("Processing attest\n");
+            return process_attest(data);
+            break;
+        case packet_magic_t::BOOT:
+            printf("Processing boot\n");
+            return process_boot(data);
+            break;
+        case packet_magic_t::REPLACE:
+            printf("Processing replace\n");
+            return process_replace(data);
+            break;
+        case packet_magic_t::KEX:
+            printf("Processing kex\n");
+            return process_kex(data);
+            break;
+        case packet_magic_t::LIST:
+            printf("Processing list\n");
+            return process_list(data);
+            break;
+        default:
+            printf("Error: Unrecognized command received %d\n", data[0]);
+            return error_t::ERROR;
+        }
+    } else {
+        switch (static_cast<packet_magic_t>(data[0])) {
+        case packet_magic_t::ENCRYPTED:
+            printf("Processing encrypted\n");
+            return error_t::SUCCESS;
+            break;
+        default:
+            printf("Error: Unrecognized command received %d\n", data[0]);
+            return error_t::ERROR;
+        }
     }
 }
 
@@ -411,11 +422,15 @@ static error_t process_attest(const uint8_t *const data) {
         calc_checksum(&rx_packet.payload, sizeof(rx_packet.payload));
     if (rx_packet.header.checksum != expected_checksum) {
         // Checksum failed
+        printf("Checksum failed %d != %d", rx_packet.header.checksum,
+               expected_checksum);
         return error_t::ERROR;
     } else if (rx_packet.payload.len != 0x6) {
+        printf("Invalid payload length %d != %d\n", rx_packet.payload.len, 0x6);
         // Invalid payload length
         return error_t::ERROR;
     } else if (memcmp(rx_packet.payload.data, "ATTEST", 0x6) != 0) {
+        printf("Invalid payload\n");
         // Invalid payload
         return error_t::ERROR;
     } else if (/*sigverify(data) ==*/false) {
@@ -519,8 +534,8 @@ int main() {
     while (true) {
         // Do nothing
         if (state == state_t::POSTBOST) {
-            // TODO: Disable all functions
             boot();
+            return 0;
         }
     }
 }
