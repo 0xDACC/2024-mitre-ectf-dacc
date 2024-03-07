@@ -50,6 +50,15 @@ error_t i2c_simple_peripheral_init(const uint8_t addr, const i2c_cb_t cb) {
     return error_t::SUCCESS;
 }
 
+// Fritz Stine: I believe the problem is most likely in this function. Would
+// splitting I2C transactions of 256 bytes work maybe? List 100% works on our
+// boards, but attest does not. 256 bytes are sent of the 263(?) then it just
+// stops for whatever reason, causing the AP to hang indefinitely. I'm not sure
+// what exactly is causing this, and nothing in the 400+ page user guide says
+// anything about a possible cause. I tried to stick to the example code as much
+// as possible but with bounds checks on the component side rather than
+// receiving the length from the AP, which could cause a buffer overflow. Any
+// suggestions would be greatly appreciated.
 void i2c_simple_isr() {
     printf("I2C ISR\n");
     const uint32_t flags = MXC_I2C1->intfl0;
