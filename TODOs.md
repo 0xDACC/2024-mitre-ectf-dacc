@@ -43,6 +43,7 @@
 
 ## Secure Send & Receive (Andrew)
 
+- [X] Must be in post-boot state
 - [X] ECDHE Encryption Scheme
 - [X] Encrypt all packets with AES-128-CTR mode
 - [X] Derive Private Key randomly
