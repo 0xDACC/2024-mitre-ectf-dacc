@@ -96,16 +96,6 @@ void i2c_simple_isr() {
             MXC_I2C_ClearFlags(MXC_I2C1, MXC_F_I2C_INTFL0_TX_LOCKOUT, 0);
         }
 
-        if (txsize == 0) {
-            // Call the callback function
-            printf("CALLING CALLBACK\n");
-            txcnt = 0;
-            if (call_processing_callback() != error_t::SUCCESS) {
-                printf("Failed to call processing callback\n");
-            }
-            printf("CALLBACK SUCCESS\n");
-        }
-
         const uint8_t available = MXC_I2C_GetTXFIFOAvailable(MXC_I2C1);
         if (txcnt >= txsize || txsize == 0) {
             // Send null bytes cause of some weird bug?
@@ -137,6 +127,13 @@ void i2c_simple_isr() {
             MXC_I2C_ClearFlags(MXC_I2C1, MXC_F_I2C_INTFL0_TX_LOCKOUT, 0);
             txsize = 0;
             txcnt = 0;
+            // Call the callback function
+            printf("CALLING CALLBACK\n");
+            txcnt = 0;
+            if (call_processing_callback() != error_t::SUCCESS) {
+                printf("Failed to call processing callback\n");
+            }
+            printf("CALLBACK SUCCESS\n");
         }
 
         MXC_I2C_EnableInt(MXC_I2C1, MXC_F_I2C_INTEN0_TX_THD, 0);
