@@ -40,8 +40,8 @@ error_t i2c_simple_controller_init();
  */
 template <packet_type_t R, packet_type_t T>
 packet_t<R> send_i2c_master_tx(const i2c_addr_t addr, packet_t<T> packet) {
-    uint8_t rxbuf[299] = {};
-    uint8_t txbuf[299] = {};
+    uint8_t rxbuf[304] = {};
+    uint8_t txbuf[304] = {};
     packet_t<R> rx_packet = {};
 
     memcpy(&txbuf[0], &packet.header.magic, sizeof(packet_magic_t));
@@ -51,16 +51,16 @@ packet_t<R> send_i2c_master_tx(const i2c_addr_t addr, packet_t<T> packet) {
     mxc_i2c_req_t request;
     request.i2c = MXC_I2C1;
     request.addr = addr;
-    request.tx_len =
-        sizeof(payload_t<T>) + sizeof(packet_magic_t) + sizeof(uint32_t);
+    // FIXME: Why does it only want multiples of 8???
+    request.tx_len = (sizeof(payload_t<T>) + 5) / 8 * 8 + 8;
     request.tx_buf = txbuf;
-    request.rx_len =
-        sizeof(payload_t<R>) + sizeof(packet_magic_t) + sizeof(uint32_t);
+    request.rx_len = sizeof(payload_t<R>) + 5;
     request.rx_buf = rxbuf;
     request.restart = 0;
     request.callback = nullptr;
 
     const int error = MXC_I2C_MasterTransaction(&request);
+    printf("DONE\n");
     if (error == E_NO_ERROR) {
         rx_packet.header.magic = static_cast<packet_magic_t>(rxbuf[0]);
         memcpy(&rx_packet.header.checksum, &rxbuf[1], sizeof(uint32_t));
