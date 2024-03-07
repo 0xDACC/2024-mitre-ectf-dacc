@@ -260,7 +260,6 @@ static int secure_receive(const i2c_addr_t address, uint8_t *const buffer) {
  * functionality. This function must be implemented by your team.
  */
 static int get_provisioned_ids(uint32_t *const buffer) {
-    // TODO: Anybody Maybe make some changes?
     memcpy(buffer, flash_status.component_ids,
            flash_status.component_cnt * sizeof(uint32_t));
     return static_cast<int>(flash_status.component_cnt);
@@ -414,17 +413,38 @@ static error_t attest_component(const uint32_t component_id,
 
     memcpy(tx_packet.payload.data, "ATTEST", 0x06);
 
-    // tx_packet.payload.sig = 0;
-    // TODO: Henry and David, implement signature algorithm here
+    uint8_t hash[32] = {};
+    tc_sha256_state_struct sha256_ctx = {};
+    tc_sha256_init(&sha256_ctx);
+    tc_sha256_update(&sha256_ctx, tx_packet.payload.data, 0x6);
+    tc_sha256_final(hash, &sha256_ctx);
+
+    if (uECC_sign(KEYPAIR_A_PRIV, hash, 32, tx_packet.payload.sig,
+                  uECC_secp256r1()) != 1) {
+        print_error("Could not attest component\n");
+        return error_t::ERROR;
+    }
 
     tx_packet.header.checksum =
         calc_checksum(&tx_packet.payload, sizeof(tx_packet.payload));
+    printf("Sending ATTEST\n");
+    printf("magic: %d\n", tx_packet.header.magic);
+    printf("checksum: %d\n", tx_packet.header.checksum);
+    printf("len: %d\n", tx_packet.payload.len);
+    printf("sig: %02x%02x%02x%02x%02x\n", tx_packet.payload.sig[60],
+           tx_packet.payload.sig[61], tx_packet.payload.sig[62],
+           tx_packet.payload.sig[63], tx_packet.payload.sig[64]);
 
     const packet_t<packet_type_t::ATTEST_ACK> rx_packet =
         send_i2c_master_tx<packet_type_t::ATTEST_ACK,
                            packet_type_t::ATTEST_COMMAND>(addr, tx_packet);
     const uint32_t expected_checksum =
         calc_checksum(&rx_packet.payload, sizeof(rx_packet.payload));
+
+    sha256_ctx = {};
+    tc_sha256_init(&sha256_ctx);
+    tc_sha256_update(&sha256_ctx, rx_packet.payload.data, 192);
+    tc_sha256_final(hash, &sha256_ctx);
 
     if (rx_packet.header.magic != packet_magic_t::ATTEST_ACK) {
         // Invalid response
@@ -438,8 +458,8 @@ static error_t attest_component(const uint32_t component_id,
         // Invalid payload length
         print_error("Could not attest component\n");
         return error_t::ERROR;
-    } else if (/*sigverify=*/false) {
-        // TODO: Henry and David, implement signature verification here
+    } else if (uECC_verify(KEYPAIR_C_PUB, hash, 32, rx_packet.payload.sig,
+                           uECC_secp256r1()) != 1) {
         // Invalid signature
         print_error("Could not attest component\n");
         return error_t::ERROR;
@@ -555,7 +575,6 @@ static error_t validate_token() {
     uint8_t buf[17] = {};
     recv_input("Enter token: ", buf, sizeof(buf));
 
-    // TODO: Ezequiel and Cam, compare hashes, not raw strings
     tc_sha256_state_struct sha256_ctx = {};
     uint8_t hash[32] = {};
     tc_sha256_init(&sha256_ctx);
