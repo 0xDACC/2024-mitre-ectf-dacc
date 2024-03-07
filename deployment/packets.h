@@ -30,6 +30,8 @@ enum class packet_magic_t : uint8_t {
 	ENCRYPTED,
 	REPLACE,
 	REPLACE_ACK,
+	BOOT_SIG_REQ,
+	BOOT_SIG_ACK
 };
 
 /**
@@ -47,7 +49,9 @@ enum class packet_type_t : uint8_t {
 	BOOT_ACK,
 	SECURE,
 	REPLACE_COMMAND,
-	REPLACE_ACK
+	REPLACE_ACK,
+	BOOT_SIG_REQ_COMMAND,
+	BOOT_SIG_ACK
 };
 
 /**
@@ -101,7 +105,7 @@ template<> struct __packed payload_t<packet_type_t::LIST_ACK> {
 template<> struct __packed payload_t<packet_type_t::ATTEST_COMMAND> {
 	uint8_t len;
 	uint8_t data[6];
-	uint8_t sig[65];
+	uint8_t sig[64];
 };
 
 /**
@@ -111,7 +115,7 @@ template<> struct __packed payload_t<packet_type_t::ATTEST_COMMAND> {
 template<> struct __packed payload_t<packet_type_t::ATTEST_ACK> {
 	uint8_t len;
 	uint8_t data[192];
-	uint8_t sig[65];
+	uint8_t sig[64];
 };
 
 /**
@@ -121,7 +125,7 @@ template<> struct __packed payload_t<packet_type_t::ATTEST_ACK> {
 template<> struct __packed payload_t<packet_type_t::BOOT_COMMAND> {
 	uint8_t len;
 	uint8_t data[4];
-	uint8_t sig[65];
+	uint8_t sig[64];
 };
 
 /**
@@ -131,7 +135,7 @@ template<> struct __packed payload_t<packet_type_t::BOOT_COMMAND> {
 template<> struct __packed payload_t<packet_type_t::BOOT_ACK> {
 	uint8_t len;
 	uint8_t data[64];
-	uint8_t sig[65];
+	uint8_t sig[64];
 };
 
 /**
@@ -142,7 +146,7 @@ template<> struct __packed payload_t<packet_type_t::SECURE> {
 	uint8_t magic;
 	uint8_t len;
 	uint32_t nonce;
-	uint8_t data[256];
+	uint8_t data[64];
 	uint8_t hmac[32];
 };
 
@@ -161,7 +165,26 @@ template<> struct __packed payload_t<packet_type_t::REPLACE_COMMAND> {
  */
 template<> struct __packed payload_t<packet_type_t::REPLACE_ACK> {
 	uint8_t len;
-	uint8_t data[65];
+	uint8_t data[64];
+};
+
+/**
+ * @brief Boot signature request command packet payload
+ *
+ */
+template<> struct __packed payload_t<packet_type_t::BOOT_SIG_REQ_COMMAND> {
+	uint8_t len;
+	uint8_t data[32];
+	uint8_t sig[64];
+};
+
+/**
+ * @brief Boot signature request ack packet payload
+ *
+ */
+template<> struct __packed payload_t<packet_type_t::BOOT_SIG_ACK> {
+	uint8_t len;
+	uint8_t data[64];
 };
 
 /**

@@ -9,6 +9,8 @@
  *
  */
 
+#define AP 1
+
 #include "board.h"
 #include "i2c.h"
 #include "icc.h"
@@ -339,65 +341,103 @@ static error_t list_components() {
     return error_t::SUCCESS;
 }
 
-static error_t validate_components() {
-    // This is the signing part (all systems valid on page 5)
+static error_t validate_component(const uint8_t addr) {
+    packet_t<packet_type_t::BOOT_SIG_REQ_COMMAND> tx_packet = {};
+    tx_packet.header.magic = packet_magic_t::BOOT_SIG_REQ;
+    tx_packet.payload.len = 0x60;
+    random_bytes(tx_packet.payload.data, 0x20);
 
-    // TODO: Tyler, implement packet checks and signature algorithms
-    for (uint32_t i = 0; i < flash_status.component_cnt; ++i) {
-        /*
-        // Set the I2C address of the component
-        i2c_addr_t addr =
-            component_id_to_i2c_addr(flash_status.component_ids[i]);
-
-        // Create command message
-        command_message *command = (command_message *)transmit_buffer;
-        command->opcode = COMPONENT_CMD_VALIDATE;
-
-        // Send out command and receive result
-        mitre_error_t result = issue_cmd(addr, transmit_buffer, receive_buffer);
-        if (result == mitre_error_t::ERROR) {
-            print_error("Could not validate component\n");
-            return mitre_error_t::ERROR;
-        }
-
-        const validate_message *validate = (validate_message *)receive_buffer;
-        // Check that the result is correct
-        if (validate->component_id != flash_status.component_ids[i]) {
-            print_error("Component ID: 0x%08lx invalid\n",
-                        flash_status.component_ids[i]);
-            return mitre_error_t::ERROR;
-        }
-        */
+    if (uECC_sign(BOOT_A_PRIV, tx_packet.payload.data, 0x20,
+                  tx_packet.payload.sig, uECC_secp256r1()) != 1) {
+        print_error("Could not validate component\n");
+        return error_t::ERROR;
     }
+
+    tx_packet.header.checksum =
+        calc_checksum(&tx_packet.payload, sizeof(tx_packet.payload));
+
+    const packet_t<packet_type_t::BOOT_SIG_ACK> rx_packet =
+        send_i2c_master_tx<packet_type_t::BOOT_SIG_ACK,
+                           packet_type_t::BOOT_SIG_REQ_COMMAND>(addr,
+                                                                tx_packet);
+
+    const uint32_t expected_checksum =
+        calc_checksum(&rx_packet.payload, sizeof(rx_packet.payload));
+
+    if (rx_packet.header.magic != packet_magic_t::BOOT_SIG_ACK) {
+        // Invalid response
+        print_error("Could not validate component\n");
+        return error_t::ERROR;
+    } else if (rx_packet.header.checksum != expected_checksum) {
+        // Invalid checksum
+        print_error("Could not validate component\n");
+        return error_t::ERROR;
+    } else if (rx_packet.payload.len != 0x40) {
+        // Invalid payload length
+        print_error("Could not validate component\n");
+        return error_t::ERROR;
+    } else if (uECC_verify(BOOT_C_PUB, tx_packet.payload.data, 0x20,
+                           rx_packet.payload.data, uECC_secp256r1()) != 1) {
+        // Invalid signature
+        print_error("Could not validate component\n");
+        return error_t::ERROR;
+    }
+
     return error_t::SUCCESS;
 }
 
-static error_t boot_components() {
-    // This is the signed boot command part (Valid ACK Received? on page 5
+static error_t boot_component(const uint8_t addr) {
+    packet_t<packet_type_t::BOOT_COMMAND> tx_packet = {};
+    tx_packet.header.magic = packet_magic_t::BOOT;
+    tx_packet.payload.len = 0x20;
+    memcpy(&tx_packet.payload.data, "BOOT", 0x04);
 
-    // TODO: Tyler, implement boot_components
-    for (uint32_t i = 0; i < flash_status.component_cnt; ++i) {
-        // Set the I2C address of the component
-        /*
-        i2c_addr_t addr =
-            component_id_to_i2c_addr(flash_status.component_ids[i]);
+    tc_sha256_state_struct sha256_ctx = {};
+    uint8_t hash[32] = {};
+    tc_sha256_init(&sha256_ctx);
+    tc_sha256_update(&sha256_ctx, tx_packet.payload.data, 0x04);
+    tc_sha256_final(hash, &sha256_ctx);
 
-        // Create command message
-        command_message *command = (command_message *)transmit_buffer;
-        command->opcode = COMPONENT_CMD_BOOT;
-
-        // Send out command and receive result
-        mitre_error_t result = issue_cmd(addr, transmit_buffer, receive_buffer);
-        if (result == mitre_error_t::ERROR) {
-            print_error("Could not boot component\n");
-            return mitre_error_t::ERROR;
-        }
-
-        // Print boot message from component
-        print_info("0x%08lx>%s\n", flash_status.component_ids[i],
-                   receive_buffer);
-                   */
+    if (uECC_sign(BOOT_A_PRIV, hash, 32, tx_packet.payload.sig,
+                  uECC_secp256r1()) != 1) {
+        print_error("Could not boot component\n");
+        return error_t::ERROR;
     }
+
+    tx_packet.header.checksum =
+        calc_checksum(&tx_packet.payload, sizeof(tx_packet.payload));
+
+    const packet_t<packet_type_t::BOOT_ACK> rx_packet =
+        send_i2c_master_tx<packet_type_t::BOOT_ACK,
+                           packet_type_t::BOOT_COMMAND>(addr, tx_packet);
+
+    sha256_ctx = {};
+    tc_sha256_init(&sha256_ctx);
+    tc_sha256_update(&sha256_ctx, rx_packet.payload.data, 0x40);
+    tc_sha256_final(hash, &sha256_ctx);
+
+    const uint32_t expected_checksum =
+        calc_checksum(&rx_packet.payload, sizeof(rx_packet.payload));
+    if (rx_packet.header.magic != packet_magic_t::BOOT_ACK) {
+        // Invalid response
+        print_error("Could not boot component\n");
+        return error_t::ERROR;
+    } else if (rx_packet.header.checksum != expected_checksum) {
+        // Invalid checksum
+        print_error("Could not boot component\n");
+        return error_t::ERROR;
+    } else if (rx_packet.payload.len != 0x40) {
+        // Invalid payload length
+        print_error("Could not boot component\n");
+        return error_t::ERROR;
+    } else if (uECC_verify(BOOT_C_PUB, hash, 32, rx_packet.payload.sig,
+                           uECC_secp256r1()) != 1) {
+        // Invalid signature
+        print_error("Could not boot component\n");
+        return error_t::ERROR;
+    }
+
+    print_info("0x%08lx>%.64s\n", addr, rx_packet.payload.data);
     return error_t::SUCCESS;
 }
 
@@ -419,7 +459,7 @@ static error_t attest_component(const uint32_t component_id,
     tc_sha256_update(&sha256_ctx, tx_packet.payload.data, 0x6);
     tc_sha256_final(hash, &sha256_ctx);
 
-    if (uECC_sign(ATTEST_PRIV, hash, 32, tx_packet.payload.sig,
+    if (uECC_sign(ATTEST_A_PRIV, hash, 32, tx_packet.payload.sig,
                   uECC_secp256r1()) != 1) {
         print_error("Could not attest component\n");
         return error_t::ERROR;
@@ -431,9 +471,9 @@ static error_t attest_component(const uint32_t component_id,
     printf("magic: %d\n", tx_packet.header.magic);
     printf("checksum: %d\n", tx_packet.header.checksum);
     printf("len: %d\n", tx_packet.payload.len);
-    printf("sig: %02x%02x%02x%02x%02x\n", tx_packet.payload.sig[60],
-           tx_packet.payload.sig[61], tx_packet.payload.sig[62],
-           tx_packet.payload.sig[63], tx_packet.payload.sig[64]);
+    printf("sig: %02x%02x%02x%02x%02x\n", tx_packet.payload.sig[59],
+           tx_packet.payload.sig[60], tx_packet.payload.sig[61],
+           tx_packet.payload.sig[62], tx_packet.payload.sig[63]);
 
     const packet_t<packet_type_t::ATTEST_ACK> rx_packet =
         send_i2c_master_tx<packet_type_t::ATTEST_ACK,
@@ -458,7 +498,7 @@ static error_t attest_component(const uint32_t component_id,
         // Invalid payload length
         print_error("Could not attest component\n");
         return error_t::ERROR;
-    } else if (uECC_verify(ATTEST_PUB, hash, 32, rx_packet.payload.sig,
+    } else if (uECC_verify(ATTEST_C_PUB, hash, 32, rx_packet.payload.sig,
                            uECC_secp256r1()) != 1) {
         // Invalid signature
         print_error("Could not attest component\n");
@@ -480,7 +520,7 @@ static error_t attest_component(const uint32_t component_id,
                 &aes_key);
 
     print_info("C>0x%08lx\n", component_id);
-    print_info("LOC>%s\nDATE>%s\nCUST>%s\n", attest_loc, attest_date,
+    print_info("LOC>%.64s\nDATE>%.64s\nCUST>%.64s\n", attest_loc, attest_date,
                attest_cust);
     return error_t::SUCCESS;
 }
@@ -590,25 +630,23 @@ static error_t validate_token() {
 }
 
 static void attempt_boot() {
-    if (validate_components() != error_t::SUCCESS) {
-        print_error("Components could not be validated\n");
-        return;
-    }
-    if (boot_components() != error_t::SUCCESS) {
-        print_error("Failed to boot all components\n");
-        return;
-    }
     for (uint32_t i = 0; i < flash_status.component_cnt; ++i) {
         const i2c_addr_t addr =
             component_id_to_i2c_addr(flash_status.component_ids[i]);
         if (perform_kex(addr) != error_t::SUCCESS) {
+            print_error("Failed to perform key exchange with component\n");
+            return;
+        } else if (validate_component(addr) != error_t::SUCCESS) {
+            print_error("Failed to validate component\n");
+            return;
+        } else if (boot_component(addr) != error_t::SUCCESS) {
+            print_error("Failed to boot component\n");
             return;
         }
     }
 
-    print_info("AP>%s\n", AP_BOOT_MSG);
+    print_info("AP>%.64s\n", AP_BOOT_MSG);
     print_success("Boot\n");
-    // Boot
     boot();
 }
 
@@ -663,7 +701,7 @@ static void attempt_replace() {
                 // Invalid checksum
                 print_error("Could not replace component\n");
                 return;
-            } else if (rx_packet.payload.len != 0x41) {
+            } else if (rx_packet.payload.len != 0x40) {
                 // Invalid payload length
                 print_error("Could not replace component\n");
                 return;
@@ -747,7 +785,7 @@ int main() {
         } else if (strcmp(buf, "attest") == 0) {
             attempt_attest();
         } else {
-            print_error("Unrecognized command '%s'\n", buf);
+            print_error("Unrecognized command '%.8s'\n", buf);
         }
     }
 
