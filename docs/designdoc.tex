@@ -31,8 +31,8 @@
 \section{Proposed List Changes}
 
 \paragraph{Use standard I2C packet structure}
-
-\begin{table}
+\noindent \begin{flushleft}
+\begin{table}[H]
 \noindent \centering{}%
 \begin{tabular}{|c|c|c|}
 \hline 
@@ -46,7 +46,7 @@ Packet Magic & Checksum & Length\tabularnewline
 \hline 
 \end{tabular}\caption{List Packet}
 \end{table}
-\begin{table}
+\begin{table}[H]
 \noindent \centering{}%
 \begin{tabular}{|c|c|c|c|}
 \hline 
@@ -60,7 +60,7 @@ Packet Magic & Checksum & Length & Data\tabularnewline
 \hline 
 \end{tabular}\caption{List Response Packet}
 \end{table}
-
+\par\end{flushleft}
 
 \section{Proposed Attest Changes}
 
@@ -79,8 +79,8 @@ approximately 2 seconds.}
 \end{itemize}
 
 \paragraph{Meets SR3 and SR4}
-
-\begin{table}
+\noindent \begin{flushleft}
+\begin{table}[H]
 \noindent \centering{}%
 \begin{tabular}{|c|c|c|c|c|}
 \hline 
@@ -88,15 +88,13 @@ approximately 2 seconds.}
 \hline 
 Packet Magic & Checksum & Length & Data & Signature\tabularnewline
 \hline 
-(1 byte) & (4 bytes) & (1 byte) & (6 bytes) & (65 bytes)\tabularnewline
+(1 byte) & (4 bytes) & (1 byte) & (6 bytes) & (64 bytes)\tabularnewline
 \hline 
  &  & 0x06 & 0x415454455354 & \tabularnewline
 \hline 
 \end{tabular}\caption{Attestation Data Packet}
 \end{table}
-
-\noindent 
-\begin{table}
+\begin{table}[H]
 \noindent \centering{}%
 \begin{tabular}{|c|c|c|c|c|}
 \hline 
@@ -104,13 +102,13 @@ Packet Magic & Checksum & Length & Data & Signature\tabularnewline
 \hline 
 Packet Magic & Checksum & Length & Attestation Data & Signature\tabularnewline
 \hline 
-(1 byte) & (4 bytes) & (1 byte) & (192 bytes) & (65 bytes)\tabularnewline
+(1 byte) & (4 bytes) & (1 byte) & (192 bytes) & (64 bytes)\tabularnewline
 \hline 
  &  & 0xC0 &  & \tabularnewline
 \hline 
 \end{tabular}\caption{Attestation ACK Packet}
 \end{table}
-
+\par\end{flushleft}
 
 \section{Proposed Replace Changes}
 
@@ -122,15 +120,15 @@ Packet Magic & Checksum & Length & Attestation Data & Signature\tabularnewline
 
 \paragraph{Verify component authenticity}
 \begin{enumerate}
-\item Store an asymmetric public key in flash
+\item Store replacement public key in flash
 \item Generate a random number using onboard TRNG
 \item Ask new component to sign random number
-\item Verify using onboard public key
+\item Verify using replacement public key
 \end{enumerate}
 
 \paragraph{Meets SR3}
 
-\begin{table}
+\begin{table}[H]
 \noindent \centering{}%
 \begin{tabular}{|c|c|c|c|}
 \hline 
@@ -144,9 +142,7 @@ Packet Magic & Checksum & Length & Data\tabularnewline
 \hline 
 \end{tabular}\caption{Replace Data Packet}
 \end{table}
-
-\noindent 
-\begin{table}
+\begin{table}[H]
 \noindent \centering{}%
 \begin{tabular}{|c|c|c|c|}
 \hline 
@@ -154,7 +150,7 @@ Packet Magic & Checksum & Length & Data\tabularnewline
 \hline 
 Packet Magic & Checksum & Length & Signature\tabularnewline
 \hline 
-(1 byte) & (4 bytes) & (1 byte) & (65 bytes)\tabularnewline
+(1 byte) & (4 bytes) & (1 byte) & (64 bytes)\tabularnewline
 \hline 
  &  & 0x41 & \tabularnewline
 \hline 
@@ -167,9 +163,8 @@ Packet Magic & Checksum & Length & Signature\tabularnewline
 
 \paragraph{Verify integrity of all 3 boards}
 \begin{itemize}
-\item Store public keys C and private key A on AP
-\item Store public key A and private key C on Component1
-\item Store public key A and private key C on Component2
+\item Store public key C and private key A on AP
+\item Store public key A and private key C on Components
 \end{itemize}
 \noindent \begin{center}
 \noindent \begin{center}
@@ -207,17 +202,29 @@ C
 C
 \item Component1 verifies signature using key C
 \end{enumerate}
+\item AP verifies Component2
+\begin{enumerate}
+\item AP generates a random number and asks Component2 to sign with key
+C
+\item AP verifies signature using key C
+\end{enumerate}
 \item Component2 verifies AP
 \begin{enumerate}
 \item Component2 generates a random number and asks AP to sign with key
 A
 \item Component2 verifies signature using key A
 \end{enumerate}
-\item AP verifies Component2
+\item AP verifies ComponentN
 \begin{enumerate}
-\item AP generates a random number and asks Component2 to sign with key
+\item AP generates a random number and asks ComponentN to sign with key
 C
 \item AP verifies signature using key C
+\end{enumerate}
+\item ComponentN verifies AP
+\begin{enumerate}
+\item ComponentN generates a random number and asks AP to sign with key
+A
+\item ComponentN verifies signature using key A
 \end{enumerate}
 \end{enumerate}
 
@@ -256,6 +263,20 @@ C
 \label{fig:my_label}
 \end{figure}
 
+
+\paragraph{If:}
+\begin{itemize}
+\item Packet Magic != Expected Magic
+\item CSUM(Payload) != Expected Checksum
+\item Length != 0x40
+\item ecrecover(signature) != key A or key C
+\item Startup ACK data == 0x00 and recover(signature) == key A or key C
+\end{itemize}
+\textbf{\emph{Shut down immediately, send fail packet if running on
+component, and do not continue operation.}}
+
+\paragraph{Meets SR1 and SR2}
+
 \noindent 
 \begin{table}[H]
 \noindent \centering{}%
@@ -265,14 +286,12 @@ C
 \hline 
 Packet Magic & Checksum & Length & Data & Signature\tabularnewline
 \hline 
-(1 byte) & (4 bytes) & (1 byte) & (4 bytes) & (65 bytes)\tabularnewline
+(1 byte) & (4 bytes) & (1 byte) & (4 bytes) & (64 bytes)\tabularnewline
 \hline 
  &  & 0x04 & 0x424F4F54 & \tabularnewline
 \hline 
 \end{tabular}\caption{Component Boot Packet}
 \end{table}
-
-\noindent 
 \begin{table}[H]
 \centering{}%
 \begin{tabular}{|c|c|c|c|c|}
@@ -281,28 +300,12 @@ Packet Magic & Checksum & Length & Data & Signature\tabularnewline
 \hline 
 Packet Magic & Checksum & Length & Boot Message & Signature\tabularnewline
 \hline 
-(1 byte) & (4 bytes) & (1 byte) & (64 bytes) & (65 bytes)\tabularnewline
+(1 byte) & (4 bytes) & (1 byte) & (64 bytes) & (64 bytes)\tabularnewline
 \hline 
  &  & 0x40 &  & \tabularnewline
 \hline 
 \end{tabular}\caption{Boot ACK Packet}
 \end{table}
-
-
-\paragraph{If:}
-\begin{itemize}
-\item Packet Magic != 0xBB or 0xAA
-\item CSUM(Payload) != Expected Checksum
-\item Length != 0x45
-\item Data != 0x424F4F54
-\item recover(signature) != key B or key C
-\item Startup ACK data == 0xFF and recover(signature) == key A, key B, key
-C, or key D
-\end{itemize}
-\textbf{\emph{Shut down immediately, send fail packet if running on
-component, and do not continue operation.}}
-
-\paragraph{Meets SR1 and SR2}
 
 \newpage{}
 
@@ -318,6 +321,20 @@ component, and do not continue operation.}}
 \item Append HMAC to all packets before encrypting
 \item Calculate checksum of encrypted data
 \end{itemize}
+
+\paragraph{If:}
+\begin{itemize}
+\item Packet Magic != Expected Magic
+\item CSUM(packet) != Expected Checksum
+\item Payload Magic != Expected Magic
+\item HMAC(Data) != HMAC or Hash(Key) != Key Hash
+\item Nonce != Expected Nonce
+\end{itemize}
+\textbf{\emph{Shut down immediately, send fail packet, and do not
+continue operation.}}
+
+\paragraph{Meets SR5}
+
 \noindent 
 \begin{table}[H]
 \centering{}%
@@ -348,31 +365,9 @@ Packet Magic & Checksum & Length & Key Material & Key Hash\tabularnewline
 \end{tabular}\caption{Key Exchange I2C Packet}
 \end{table}
 
-
-\paragraph{If:}
-\begin{itemize}
-\item Packet Magic != Expected Magic
-\item CSUM(packet) != Expected Checksum
-\item Payload Magic != Expected Magic
-\item HMAC(Data) != HMAC or Hash(Key) != Key Hash
-\item Nonce != Expected Nonce
-\end{itemize}
-\textbf{\emph{Shut down immediately, send fail packet, and do not
-continue operation.}}
-
-\paragraph{Meets SR5}
-
 \newpage{}
 
 \section{Other}
-
-\paragraph{Secure DAPLink firmware for RISC-V chip}
-\begin{itemize}
-\item Only execute signed code
-\item Disable the DAPLINK flashing utility
-\item Disable code debugging
-\item Disable MAINTENANCE mode
-\end{itemize}
 
 \paragraph{Secure key storage}
 \begin{itemize}
@@ -385,23 +380,14 @@ flash
 extract the real keys and static reverse engineering would have a
 similar outcome
 \end{itemize}
-
-\paragraph{All of the above objectives are futile if the attacker can simply
-modify the flash or just set a breakpoint where the validation happens.
-By not allowing the chip to be debugged (easily) and only allowing
-signed code to be run, security becomes a lot more reasonable. After
-reading through the requirements, some of these ``secure boot''
-steps may be unnecessary, so may or may not be implemented.}
-
 \newpage{}
 
 \section{Summary}
 
 \subsection{SR1 All components must be valid for AP to boot}
 \begin{itemize}
-\item Validate Component1 integrity through signing an arbitrary number
-\item Validate Component2 integrity in same manner
-\item Components then validate the AP to make sure all 3 systems are present
+\item Validate all component's integrity through signing an arbitrary number
+\item Components then validate the AP to make sure all systems are present
 and valid
 \item Boot the AP
 \end{itemize}

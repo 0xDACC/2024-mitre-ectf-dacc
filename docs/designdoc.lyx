@@ -117,10 +117,13 @@ Use standard I2C packet structure
 \end_layout
 
 \begin_layout Standard
+\noindent
+\align left
 \begin_inset Float table
+placement H
 wide false
 sideways false
-status open
+status collapsed
 
 \begin_layout Plain Layout
 \noindent
@@ -267,9 +270,10 @@ List Packet
 
 
 \begin_inset Float table
+placement H
 wide false
 sideways false
-status open
+status collapsed
 
 \begin_layout Plain Layout
 \noindent
@@ -494,10 +498,13 @@ Meets SR3 and SR4
 \end_layout
 
 \begin_layout Standard
+\noindent
+\align left
 \begin_inset Float table
+placement H
 wide false
 sideways false
-status open
+status collapsed
 
 \begin_layout Plain Layout
 \noindent
@@ -645,7 +652,7 @@ Signature
 \begin_inset Text
 
 \begin_layout Plain Layout
-(65 bytes)
+(64 bytes)
 \end_layout
 
 \end_inset
@@ -717,14 +724,11 @@ Attestation Data Packet
 \end_inset
 
 
-\end_layout
-
-\begin_layout Standard
-\noindent
 \begin_inset Float table
+placement H
 wide false
 sideways false
-status open
+status collapsed
 
 \begin_layout Plain Layout
 \noindent
@@ -872,7 +876,7 @@ Signature
 \begin_inset Text
 
 \begin_layout Plain Layout
-(65 bytes)
+(64 bytes)
 \end_layout
 
 \end_inset
@@ -972,7 +976,7 @@ Verify component authenticity
 \end_layout
 
 \begin_layout Enumerate
-Store an asymmetric public key in flash
+Store replacement public key in flash
 \end_layout
 
 \begin_layout Enumerate
@@ -984,7 +988,7 @@ Ask new component to sign random number
 \end_layout
 
 \begin_layout Enumerate
-Verify using onboard public key
+Verify using replacement public key
 \end_layout
 
 \begin_layout Paragraph
@@ -994,9 +998,10 @@ Meets SR3
 
 \begin_layout Standard
 \begin_inset Float table
+placement H
 wide false
 sideways false
-status open
+status collapsed
 
 \begin_layout Plain Layout
 \noindent
@@ -1179,14 +1184,11 @@ Replace Data Packet
 \end_inset
 
 
-\end_layout
-
-\begin_layout Standard
-\noindent
 \begin_inset Float table
+placement H
 wide false
 sideways false
-status open
+status collapsed
 
 \begin_layout Plain Layout
 \noindent
@@ -1306,7 +1308,7 @@ Signature
 \begin_inset Text
 
 \begin_layout Plain Layout
-(65 bytes)
+(64 bytes)
 \end_layout
 
 \end_inset
@@ -1390,15 +1392,11 @@ Verify integrity of all 3 boards
 \end_layout
 
 \begin_layout Itemize
-Store public keys C and private key A on AP
+Store public key C and private key A on AP
 \end_layout
 
 \begin_layout Itemize
-Store public key A and private key C on Component1
-\end_layout
-
-\begin_layout Itemize
-Store public key A and private key C on Component2
+Store public key A and private key C on Components
 \end_layout
 
 \begin_layout Standard
@@ -1604,6 +1602,20 @@ Component1 verifies signature using key C
 
 \end_deeper
 \begin_layout Enumerate
+AP verifies Component2
+\end_layout
+
+\begin_deeper
+\begin_layout Enumerate
+AP generates a random number and asks Component2 to sign with key C
+\end_layout
+
+\begin_layout Enumerate
+AP verifies signature using key C
+\end_layout
+
+\end_deeper
+\begin_layout Enumerate
 Component2 verifies AP
 \end_layout
 
@@ -1618,16 +1630,30 @@ Component2 verifies signature using key A
 
 \end_deeper
 \begin_layout Enumerate
-AP verifies Component2
+AP verifies ComponentN
 \end_layout
 
 \begin_deeper
 \begin_layout Enumerate
-AP generates a random number and asks Component2 to sign with key C
+AP generates a random number and asks ComponentN to sign with key C
 \end_layout
 
 \begin_layout Enumerate
 AP verifies signature using key C
+\end_layout
+
+\end_deeper
+\begin_layout Enumerate
+ComponentN verifies AP
+\end_layout
+
+\begin_deeper
+\begin_layout Enumerate
+ComponentN generates a random number and asks AP to sign with key A
+\end_layout
+
+\begin_layout Enumerate
+ComponentN verifies signature using key A
 \end_layout
 
 \end_deeper
@@ -1906,13 +1932,50 @@ end{figure}
 
 \end_layout
 
+\begin_layout Paragraph
+If:
+\end_layout
+
+\begin_layout Itemize
+Packet Magic != Expected Magic
+\end_layout
+
+\begin_layout Itemize
+CSUM(Payload) != Expected Checksum
+\end_layout
+
+\begin_layout Itemize
+Length != 0x40
+\end_layout
+
+\begin_layout Itemize
+ecrecover(signature) != key A or key C
+\end_layout
+
+\begin_layout Itemize
+Startup ACK data == 0x00 and recover(signature) == key A or key C
+\end_layout
+
+\begin_layout Standard
+
+\series bold
+\emph on
+Shut down immediately, send fail packet if running on component, and do
+ not continue operation.
+\end_layout
+
+\begin_layout Paragraph
+\noindent
+Meets SR1 and SR2
+\end_layout
+
 \begin_layout Standard
 \noindent
 \begin_inset Float table
 placement H
 wide false
 sideways false
-status open
+status collapsed
 
 \begin_layout Plain Layout
 \noindent
@@ -2060,7 +2123,7 @@ Signature
 \begin_inset Text
 
 \begin_layout Plain Layout
-(65 bytes)
+(64 bytes)
 \end_layout
 
 \end_inset
@@ -2132,15 +2195,11 @@ Component Boot Packet
 \end_inset
 
 
-\end_layout
-
-\begin_layout Standard
-\noindent
 \begin_inset Float table
 placement H
 wide false
 sideways false
-status open
+status collapsed
 
 \begin_layout Plain Layout
 \align center
@@ -2287,7 +2346,7 @@ Signature
 \begin_inset Text
 
 \begin_layout Plain Layout
-(65 bytes)
+(64 bytes)
 \end_layout
 
 \end_inset
@@ -2361,48 +2420,6 @@ Boot ACK Packet
 
 \end_layout
 
-\begin_layout Paragraph
-If:
-\end_layout
-
-\begin_layout Itemize
-Packet Magic != 0xBB or 0xAA
-\end_layout
-
-\begin_layout Itemize
-CSUM(Payload) != Expected Checksum
-\end_layout
-
-\begin_layout Itemize
-Length != 0x45
-\end_layout
-
-\begin_layout Itemize
-Data != 0x424F4F54
-\end_layout
-
-\begin_layout Itemize
-recover(signature) != key B or key C
-\end_layout
-
-\begin_layout Itemize
-Startup ACK data == 0xFF and recover(signature) == key A, key B, key C,
- or key D
-\end_layout
-
-\begin_layout Standard
-
-\series bold
-\emph on
-Shut down immediately, send fail packet if running on component, and do
- not continue operation.
-\end_layout
-
-\begin_layout Paragraph
-\noindent
-Meets SR1 and SR2
-\end_layout
-
 \begin_layout Standard
 \begin_inset Newpage newpage
 \end_inset
@@ -2449,13 +2466,49 @@ Append HMAC to all packets before encrypting
 Calculate checksum of encrypted data
 \end_layout
 
+\begin_layout Paragraph
+If:
+\end_layout
+
+\begin_layout Itemize
+Packet Magic != Expected Magic
+\end_layout
+
+\begin_layout Itemize
+CSUM(packet) != Expected Checksum
+\end_layout
+
+\begin_layout Itemize
+Payload Magic != Expected Magic
+\end_layout
+
+\begin_layout Itemize
+HMAC(Data) != HMAC or Hash(Key) != Key Hash
+\end_layout
+
+\begin_layout Itemize
+Nonce != Expected Nonce
+\end_layout
+
+\begin_layout Standard
+
+\series bold
+\emph on
+Shut down immediately, send fail packet, and do not continue operation.
+\end_layout
+
+\begin_layout Paragraph
+\noindent
+Meets SR5
+\end_layout
+
 \begin_layout Standard
 \noindent
 \begin_inset Float table
 placement H
 wide false
 sideways false
-status open
+status collapsed
 
 \begin_layout Plain Layout
 \align center
@@ -2752,7 +2805,7 @@ Encrypted I2C Packet
 placement H
 wide false
 sideways false
-status open
+status collapsed
 
 \begin_layout Plain Layout
 \align center
@@ -2973,42 +3026,6 @@ Key Exchange I2C Packet
 
 \end_layout
 
-\begin_layout Paragraph
-If:
-\end_layout
-
-\begin_layout Itemize
-Packet Magic != Expected Magic
-\end_layout
-
-\begin_layout Itemize
-CSUM(packet) != Expected Checksum
-\end_layout
-
-\begin_layout Itemize
-Payload Magic != Expected Magic
-\end_layout
-
-\begin_layout Itemize
-HMAC(Data) != HMAC or Hash(Key) != Key Hash
-\end_layout
-
-\begin_layout Itemize
-Nonce != Expected Nonce
-\end_layout
-
-\begin_layout Standard
-
-\series bold
-\emph on
-Shut down immediately, send fail packet, and do not continue operation.
-\end_layout
-
-\begin_layout Paragraph
-\noindent
-Meets SR5
-\end_layout
-
 \begin_layout Standard
 \begin_inset Newpage newpage
 \end_inset
@@ -3021,27 +3038,6 @@ Meets SR5
 
 \series bold
 Other
-\end_layout
-
-\begin_layout Paragraph
-\noindent
-Secure DAPLink firmware for RISC-V chip
-\end_layout
-
-\begin_layout Itemize
-Only execute signed code
-\end_layout
-
-\begin_layout Itemize
-Disable the DAPLINK flashing utility
-\end_layout
-
-\begin_layout Itemize
-Disable code debugging
-\end_layout
-
-\begin_layout Itemize
-Disable MAINTENANCE mode
 \end_layout
 
 \begin_layout Paragraph
@@ -3067,23 +3063,6 @@ By wrapping all keys, a flash dumper payload would not be able to extract
  the real keys and static reverse engineering would have a similar outcome
 \end_layout
 
-\begin_layout Paragraph
-\noindent
-All of the above objectives are futile if the attacker can simply modify
- the flash or just set a breakpoint where the validation happens.
- By not allowing the chip to be debugged (easily) and only allowing signed
- code to be run, security becomes a lot more reasonable.
- After reading through the requirements, some of these 
-\begin_inset Quotes eld
-\end_inset
-
-secure boot
-\begin_inset Quotes erd
-\end_inset
-
- steps may be unnecessary, so may or may not be implemented.
-\end_layout
-
 \begin_layout Standard
 \begin_inset Newpage newpage
 \end_inset
@@ -3100,15 +3079,11 @@ SR1 All components must be valid for AP to boot
 \end_layout
 
 \begin_layout Itemize
-Validate Component1 integrity through signing an arbitrary number
+Validate all component's integrity through signing an arbitrary number
 \end_layout
 
 \begin_layout Itemize
-Validate Component2 integrity in same manner
-\end_layout
-
-\begin_layout Itemize
-Components then validate the AP to make sure all 3 systems are present and
+Components then validate the AP to make sure all systems are present and
  valid
 \end_layout
 
