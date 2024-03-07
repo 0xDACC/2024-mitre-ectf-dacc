@@ -1,5 +1,9 @@
 # TODOs
 
+## Other
+
+- [ ] Fix I2C bug
+
 ## List
 
 ### NOTE: Investigate why testing is failing here
@@ -10,12 +14,12 @@
 
 ## Attest (Henry + David)
 
-- [ ] Attestion PIN - 6 byte integer
-- [ ] Store Attestation PIN as SHA256 hash of PIN with however many iterations takes 2s to limit brute force
-- [ ] Wrap Attestation Data Key with 0x0000 ++ PIN as IV and SHA256 hash of PIN with however many iterations minus 1 as key
-- [ ] Store Attestation Data AES-128-CTR mode encrypted with random IV and SHA256 has of PIN with however many iterations minus 1 as key
-- [ ] Must take <3s
-- [ ] Completed All Objectives
+- [X] Attestion PIN - 6 byte integer
+- [X] Store Attestation PIN as SHA256 hash of PIN with however many iterations takes 2s to limit brute force
+- [X] Wrap Attestation Data Key with 0x0000 ++ PIN as IV and SHA256 hash of PIN with however many iterations minus 1 as key
+- [X] Store Attestation Data AES-128-CTR mode encrypted with random IV and SHA256 has of PIN with however many iterations minus 1 as key
+- [X] Must take <3s
+- [X] Completed All Objectives
 
 ## Replace (Ezequiel + Cam)
 
@@ -28,18 +32,12 @@
 
 ## Boot (Tyler)
 
-- [ ] Store predefined ECC public key 1 on AP and generate a random number [RNG Example](https://github.com/Analog-Devices-MSDK/msdk/tree/e20c2cfe54f3d8880d29c11390700840e7e7ba27/Examples/MAX78000/TRNG)
-- [ ] Ask for Component1 to sign random number
-- [ ] Verify signature
-- [ ] Store predefined ECC public key 2 on Component1
-- [ ] Ask for AP to sign random number
-- [ ] Verify signature
-- [ ] Store predefined ECC public key 3 on Component2
-- [ ] Ask for AP to sign random number
-- [ ] Verify signature
-- [ ] Store predefined ECC public key 4 on AP
-- [ ] Ask for Component2 to sign random number
-- [ ] Verify signature
+- [ ] Store predefined ECC public key C on AP and generate a random number [RNG Example](https://github.com/Analog-Devices-MSDK/msdk/tree/e20c2cfe54f3d8880d29c11390700840e7e7ba27/Examples/MAX78000/TRNG)
+- [ ] Ask for all components to sign random number
+- [ ] Verify signatures
+- [ ] Store predefined ECC public key A on Components
+- [ ] Ask for AP to sign random numbers
+- [ ] Verify signatures
 - [ ] If any of the above do not check out the integrity has been compromised
 - [ ] Completed All Objectives
 
