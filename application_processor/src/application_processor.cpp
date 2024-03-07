@@ -419,7 +419,7 @@ static error_t attest_component(const uint32_t component_id,
     tc_sha256_update(&sha256_ctx, tx_packet.payload.data, 0x6);
     tc_sha256_final(hash, &sha256_ctx);
 
-    if (uECC_sign(KEYPAIR_A_PRIV, hash, 32, tx_packet.payload.sig,
+    if (uECC_sign(ATTEST_PRIV, hash, 32, tx_packet.payload.sig,
                   uECC_secp256r1()) != 1) {
         print_error("Could not attest component\n");
         return error_t::ERROR;
@@ -458,7 +458,7 @@ static error_t attest_component(const uint32_t component_id,
         // Invalid payload length
         print_error("Could not attest component\n");
         return error_t::ERROR;
-    } else if (uECC_verify(KEYPAIR_C_PUB, hash, 32, rx_packet.payload.sig,
+    } else if (uECC_verify(ATTEST_PUB, hash, 32, rx_packet.payload.sig,
                            uECC_secp256r1()) != 1) {
         // Invalid signature
         print_error("Could not attest component\n");
@@ -667,7 +667,7 @@ static void attempt_replace() {
                 // Invalid payload length
                 print_error("Could not replace component\n");
                 return;
-            } else if (uECC_verify(KEYPAIR_C_PUB, random, 32,
+            } else if (uECC_verify(REPLACEMENT_PUB, random, 32,
                                    rx_packet.payload.data,
                                    uECC_secp256r1()) != 1) {
                 // Invalid signature

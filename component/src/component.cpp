@@ -391,7 +391,7 @@ static error_t process_replace(const uint8_t *const data) {
     tx_packet.header.magic = packet_magic_t::REPLACE_ACK;
     tx_packet.payload.len = 0x41;
 
-    if (uECC_sign(KEYPAIR_C_PRIV, rx_packet.payload.data, 0x20,
+    if (uECC_sign(BOOT_C_PRIV, rx_packet.payload.data, 0x20,
                   tx_packet.payload.data, uECC_secp256r1()) != 1) {
         // Couldn't sign
         return error_t::ERROR;
