@@ -3,6 +3,8 @@
 ## Other
 
 - [ ] Fix I2C bug
+- [ ] Test design
+- [ ] Verify functionality
 
 ## List
 
@@ -32,14 +34,14 @@
 
 ## Boot (Tyler)
 
-- [ ] Store predefined ECC public key C on AP and generate a random number [RNG Example](https://github.com/Analog-Devices-MSDK/msdk/tree/e20c2cfe54f3d8880d29c11390700840e7e7ba27/Examples/MAX78000/TRNG)
-- [ ] Ask for all components to sign random number
-- [ ] Verify signatures
-- [ ] Store predefined ECC public key A on Components
-- [ ] Ask for AP to sign random numbers
-- [ ] Verify signatures
-- [ ] If any of the above do not check out the integrity has been compromised
-- [ ] Completed All Objectives
+- [X] Store predefined ECC public key C on AP and generate a random number [RNG Example](https://github.com/Analog-Devices-MSDK/msdk/tree/e20c2cfe54f3d8880d29c11390700840e7e7ba27/Examples/MAX78000/TRNG)
+- [X] Ask for all components to sign random number
+- [X] Verify signatures
+- [X] Store predefined ECC public key A on Components
+- [X] Ask for AP to sign random numbers
+- [X] Verify signatures
+- [X] If any of the above do not check out the integrity has been compromised
+- [X] Completed All Objectives
 
 ## Secure Send & Receive (Andrew)
 
