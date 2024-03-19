@@ -104,7 +104,7 @@ template<> struct __packed payload_t<packet_type_t::LIST_ACK> {
  */
 template<> struct __packed payload_t<packet_type_t::ATTEST_COMMAND> {
 	uint8_t len;
-	uint8_t data[6];
+	uint8_t data[7];
 	uint8_t sig[64];
 };
 
@@ -114,7 +114,7 @@ template<> struct __packed payload_t<packet_type_t::ATTEST_COMMAND> {
  */
 template<> struct __packed payload_t<packet_type_t::ATTEST_ACK> {
 	uint8_t len;
-	uint8_t data[192];
+	uint8_t data[64];
 	uint8_t sig[64];
 };
 
@@ -193,7 +193,6 @@ template<> struct __packed payload_t<packet_type_t::BOOT_SIG_ACK> {
  * @tparam T Payload type
  */
 template<packet_type_t T> struct packet_t {
-	const packet_type_t type = T;
 	header_t header;
 	payload_t<T> payload;
 };
