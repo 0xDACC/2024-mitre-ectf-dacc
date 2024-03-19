@@ -21,7 +21,7 @@ def gen_keypair() -> tuple[bytes, bytes]:
         tuple[bytes, bytes]: The private and public key
     """
     key: ec.EllipticCurvePrivateKey = ec.generate_private_key(
-        ec.SECP256K1(), default_backend()
+        ec.SECP256R1(), default_backend()
     )
     return (
         key.private_numbers().private_value.to_bytes(32, "big"),
@@ -42,13 +42,13 @@ def write(type: str, name: str, values: list[str], ap: bool, comp: bool) -> None
         comp (bool): If the constant is for the Component
     """
     if not ap and not comp:
-        raise ValueError(
-            "Must specify at least one of ap or comp as True")
+        raise ValueError("Must specify at least one of ap or comp as True")
     if ap:
         output.write("#if AP\n")
         if "[" in type and "]" in type:
             output.write(
-                f"constexpr const {type.split('[')[0]} {name}[{len(values)}] = {{")
+                f"constexpr const {type.split('[')[0]} {name}[{len(values)}] = {{"
+            )
             for value in values:
                 output.write(f"{value},")
             output.write("};\n")
@@ -59,7 +59,8 @@ def write(type: str, name: str, values: list[str], ap: bool, comp: bool) -> None
         output.write("#if COMP\n")
         if "[" in type and "]" in type:
             output.write(
-                f"constexpr const {type.split('[')[0]} {name}[{len(values)}] = {{")
+                f"constexpr const {type.split('[')[0]} {name}[{len(values)}] = {{"
+            )
             for value in values:
                 output.write(f"{value},")
             output.write("};\n")
@@ -79,28 +80,23 @@ attest_key_unwrapped = secrets.token_bytes(16)
 attest_nonce = secrets.token_bytes(16)
 
 write("uint8_t[]", "BOOT_A_PUB", [f"{b}" for b in keypair_A_pub], False, True)
-write("uint8_t[]", "BOOT_A_PRIV", [
-      f"{b}" for b in keypair_A_priv], True, False)
+write("uint8_t[]", "BOOT_A_PRIV", [f"{b}" for b in keypair_A_priv], True, False)
 write("uint8_t[]", "BOOT_C_PUB", [f"{b}" for b in keypair_C_pub], True, False)
-write("uint8_t[]", "BOOT_C_PRIV", [
-      f"{b}" for b in keypair_C_priv], False, True)
-write("uint8_t[]", "REPLACEMENT_PUB", [
-      f"{b}" for b in replacement_pub], True, False)
-write("uint8_t[]", "REPLACEMENT_PRIV", [
-      f"{b}" for b in replacement_priv], False, True)
+write("uint8_t[]", "BOOT_C_PRIV", [f"{b}" for b in keypair_C_priv], False, True)
+write("uint8_t[]", "REPLACEMENT_PUB", [f"{b}" for b in replacement_pub], True, False)
+write("uint8_t[]", "REPLACEMENT_PRIV", [f"{b}" for b in replacement_priv], False, True)
 write("uint8_t[]", "ATTEST_A_PUB", [f"{b}" for b in attest_A_pub], False, True)
-write("uint8_t[]", "ATTEST_A_PRIV", [
-      f"{b}" for b in attest_A_priv], True, False)
+write("uint8_t[]", "ATTEST_A_PRIV", [f"{b}" for b in attest_A_priv], True, False)
 write("uint8_t[]", "ATTEST_C_PUB", [f"{b}" for b in attest_C_pub], True, False)
-write("uint8_t[]", "ATTEST_C_PRIV", [
-      f"{b}" for b in attest_C_priv], False, True)
+write("uint8_t[]", "ATTEST_C_PRIV", [f"{b}" for b in attest_C_priv], False, True)
 
 write("uint8_t[]", "HMAC_KEY", [f"{b}" for b in hmac_key], True, True)
-write("uint8_t[]", "ATTEST_UNWRAPPED_NONCE", [
-      f"{b}" for b in attest_nonce], True, False)
+write(
+    "uint8_t[]", "ATTEST_UNWRAPPED_NONCE", [f"{b}" for b in attest_nonce], True, False
+)
 
 output.write(f"//#define ATTEST_KEY_UNWRAPPED {attest_key_unwrapped.hex()}\n")
-output.write(f"//#define ATTEST_NONCE {attest_nonce.hex()}\n")
+output.write(f"//#define ATTEST_NONCE_UNWRAPPED {attest_nonce.hex()}\n")
 
 keypair_A_priv = keypair_A_priv.hex()
 keypair_A_pub = keypair_A_pub.hex()
