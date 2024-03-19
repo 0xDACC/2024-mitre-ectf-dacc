@@ -25,12 +25,12 @@ uint32_t prev_crc = 0;
  * @return uint32_t CRC32 of buffer
  */
 template<typename T> uint32_t calc_checksum(T *buf, const uint32_t len) {
-	if (len > 304) { return 0; }
-	uint32_t _buf[76] = {};
-	memcpy(_buf, reinterpret_cast<uint8_t *>(buf), len);
+	if (len > 256) { return 0; }
+	uint32_t _buf[64] = {};
+	memcpy(_buf, buf, len);
 	if (MXC_CRC_Init() != E_NO_ERROR) { return 0; }
 	MXC_CRC_SetPoly(0xEDB88320U);
-	mxc_crc_req_t req = {_buf, 75, prev_crc};
+	mxc_crc_req_t req = {_buf, 64, prev_crc};
 	if (MXC_CRC_Compute(&req) != E_NO_ERROR) { return 0; }
 	if (MXC_CRC_Shutdown() != E_NO_ERROR) { return 0; }
 	prev_crc = req.resultCRC;
@@ -39,12 +39,12 @@ template<typename T> uint32_t calc_checksum(T *buf, const uint32_t len) {
 
 template<typename T>
 uint32_t calc_checksum(const T *const buf, const uint32_t len) {
-	if (len > 304) { return 0; }
-	uint32_t _buf[76] = {};
-	memcpy(_buf, reinterpret_cast<const uint8_t *const>(buf), len);
+	if (len > 256) { return 0; }
+	uint32_t _buf[64] = {};
+	memcpy(_buf, buf, len);
 	if (MXC_CRC_Init() != E_NO_ERROR) { return 0; }
 	MXC_CRC_SetPoly(0xEDB88320U);
-	mxc_crc_req_t req = {_buf, 75, prev_crc};
+	mxc_crc_req_t req = {_buf, 64, prev_crc};
 	if (MXC_CRC_Compute(&req) != E_NO_ERROR) { return 0; }
 	if (MXC_CRC_Shutdown() != E_NO_ERROR) { return 0; }
 	prev_crc = req.resultCRC;
