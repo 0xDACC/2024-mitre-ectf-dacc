@@ -52,11 +52,10 @@ constexpr i2c_addr_t component_id_to_i2c_addr(const uint32_t component_id) {
     return component_id & 0xFF;
 }
 
-static constexpr const uint32_t bufsize = 304;
+static constexpr const uint32_t bufsize = 256;
 
 extern volatile uint8_t txbuf[bufsize];
 extern volatile uint8_t rxbuf[bufsize];
-extern volatile uint32_t txsize;
 extern volatile uint32_t rxcnt;
 extern volatile uint32_t txcnt;
 extern volatile i2c_cb_t processing_cb;
@@ -73,7 +72,6 @@ template <packet_type_t T> void send_packet(packet_t<T> packet) {
     memcpy(const_cast<uint8_t *>(&txbuf[1]), &packet.header.checksum, 0x04);
     memcpy(const_cast<uint8_t *>(&txbuf[5]), &packet.payload,
            sizeof(payload_t<T>));
-    txsize = (sizeof(payload_t<T>) + 5) / 8 * 8 + 8;
 }
 
 /**

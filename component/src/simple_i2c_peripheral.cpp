@@ -18,7 +18,6 @@
 namespace i2c {
 volatile uint8_t txbuf[bufsize] = {};
 volatile uint8_t rxbuf[bufsize] = {};
-volatile uint32_t txsize = 0;
 volatile uint32_t rxcnt = 0;
 volatile uint32_t txcnt = 0;
 volatile i2c_cb_t processing_cb = nullptr;
@@ -50,15 +49,6 @@ error_t i2c_simple_peripheral_init(const uint8_t addr, const i2c_cb_t cb) {
     return error_t::SUCCESS;
 }
 
-// Fritz Stine: I believe the problem is most likely in this function. Would
-// splitting I2C transactions of 256 bytes work maybe? List 100% works on our
-// boards, but attest does not. 256 bytes are sent of the 263(?) then it just
-// stops for whatever reason, causing the AP to hang indefinitely. I'm not sure
-// what exactly is causing this, and nothing in the 400+ page user guide says
-// anything about a possible cause. I tried to stick to the example code as much
-// as possible but with bounds checks on the component side rather than
-// receiving the length from the AP, which could cause a buffer overflow. Any
-// suggestions would be greatly appreciated.
 void i2c_simple_isr() {
     printf("I2C ISR\n");
     const uint32_t flags = MXC_I2C1->intfl0;
@@ -66,6 +56,7 @@ void i2c_simple_isr() {
     if ((flags & MXC_F_I2C_INTFL0_STOP) != 0) {
         printf("STOP\n");
         // Transaction ended
+
         const uint8_t available = MXC_I2C_GetRXFIFOAvailable(MXC_I2C1);
 
         if (available > (bufsize - rxcnt) && rxcnt < bufsize) {
@@ -88,10 +79,10 @@ void i2c_simple_isr() {
             // Clear the TX FIFO if anything is left
             MXC_I2C_ClearTXFIFO(MXC_I2C1);
         }
+
         // Reset state
-        rxcnt = 0;
         txcnt = 0;
-        txsize = 0;
+        rxcnt = 0;
 
         MXC_I2C_ClearFlags(MXC_I2C1, MXC_F_I2C_INTFL0_STOP, 0);
     }
@@ -106,20 +97,19 @@ void i2c_simple_isr() {
         }
 
         const uint8_t available = MXC_I2C_GetTXFIFOAvailable(MXC_I2C1);
-        if (txcnt >= txsize || txsize == 0) {
-            // Send null bytes cause of some weird bug?
+        if (txcnt >= bufsize) {
             uint8_t buf[8] = {};
             MXC_I2C_WriteTXFIFO(MXC_I2C1, buf, 8);
-        } else if (available > (txsize - txcnt)) {
+        } else if (available > (bufsize - txcnt)) {
             // Send the remaining bytes
             txcnt +=
-                MXC_I2C_WriteTXFIFO(MXC_I2C1, txbuf + txcnt, txsize - txcnt);
+                MXC_I2C_WriteTXFIFO(MXC_I2C1, txbuf + txcnt, bufsize - txcnt);
         } else {
             // Send the available bytes
             txcnt += MXC_I2C_WriteTXFIFO(MXC_I2C1, txbuf + txcnt, available);
         }
 
-        if (txcnt >= txsize) {
+        if (txcnt >= bufsize) {
             MXC_I2C_DisableInt(MXC_I2C1, MXC_F_I2C_INTEN0_TX_THD, 0);
         }
     }
@@ -133,16 +123,16 @@ void i2c_simple_isr() {
         MXC_I2C_ClearFlags(MXC_I2C1, MXC_F_I2C_INTFL0_WR_ADDR_MATCH, 0);
 
         if ((flags & MXC_F_I2C_INTFL0_TX_LOCKOUT) != 0) {
-            MXC_I2C_ClearFlags(MXC_I2C1, MXC_F_I2C_INTFL0_TX_LOCKOUT, 0);
-            txsize = 0;
-            txcnt = 0;
-            // Call the callback function
             printf("CALLING CALLBACK\n");
+            // Call the callback function
+
             txcnt = 0;
             if (call_processing_callback() != error_t::SUCCESS) {
                 printf("Failed to call processing callback\n");
             }
             printf("CALLBACK SUCCESS\n");
+
+            MXC_I2C_ClearFlags(MXC_I2C1, MXC_F_I2C_INTFL0_TX_LOCKOUT, 0);
         }
 
         MXC_I2C_EnableInt(MXC_I2C1, MXC_F_I2C_INTEN0_TX_THD, 0);
@@ -188,7 +178,6 @@ void send_raw(const uint8_t *const buf, const uint32_t len) {
     for (uint32_t i = 0; i < len; ++i) {
         txbuf[i] = buf[i];
     }
-    txsize = len;
 }
 
 void clear() {
@@ -196,7 +185,6 @@ void clear() {
         txbuf[i] = 0;
         rxbuf[i] = 0;
     }
-    txsize = 0;
     rxcnt = 0;
     txcnt = 0;
 }
