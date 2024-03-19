@@ -74,9 +74,9 @@ void secure_send(const uint8_t *const buffer, const uint8_t len) {
     memcpy(&payload[6], buffer, len);
     tc_hmac_init(&hmac_ctx);
     tc_hmac_set_key(&hmac_ctx, HMAC_KEY, 32);
-    tc_hmac_update(&hmac_ctx, &payload[0], 70);
+    tc_hmac_update(&hmac_ctx, &payload[0], sizeof(payload) - 32);
     tc_hmac_final(hmac, 32, &hmac_ctx);
-    memcpy(&payload[70], hmac, 32);
+    memcpy(&payload[sizeof(payload) - 32], hmac, 32);
 
     tc_sha256_init(&sha256_ctx);
     tc_sha256_update(&sha256_ctx, shared_secret, 32);
@@ -145,7 +145,7 @@ int secure_receive(uint8_t *const buffer) {
 
     tc_hmac_init(&hmac_ctx);
     tc_hmac_set_key(&hmac_ctx, HMAC_KEY, 32);
-    tc_hmac_update(&hmac_ctx, &payload[0], 70);
+    tc_hmac_update(&hmac_ctx, &payload[0], sizeof(payload) - 32);
     tc_hmac_final(hmac, 32, &hmac_ctx);
 
     if (payload[0] != static_cast<uint8_t>(packet_magic_t::DECRYPTED)) {
@@ -154,7 +154,7 @@ int secure_receive(uint8_t *const buffer) {
     } else if (memcmp(&payload[2], &nonce, 0x04) != 0) {
         // Invalid nonce
         return -1;
-    } else if (memcmp(hmac, &payload[70], 32) != 0) {
+    } else if (memcmp(hmac, &payload[sizeof(payload) - 32], 32) != 0) {
         // HMAC failed
         return -1;
     }
@@ -168,9 +168,9 @@ int secure_receive(uint8_t *const buffer) {
 
     tc_hmac_init(&hmac_ctx);
     tc_hmac_set_key(&hmac_ctx, HMAC_KEY, 32);
-    tc_hmac_update(&hmac_ctx, &payload[0], 70);
+    tc_hmac_update(&hmac_ctx, &payload[0], sizeof(payload) - 32);
     tc_hmac_final(hmac, 32, &hmac_ctx);
-    memcpy(&payload[70], hmac, 32);
+    memcpy(&payload[sizeof(payload) - 32], hmac, 32);
 
     tc_sha256_init(&sha256_ctx);
     tc_sha256_update(&sha256_ctx, shared_secret, 32);
@@ -443,7 +443,7 @@ error_t process_attest(const uint8_t *const data) {
     tc_sha256_state_struct sha256_ctx = {};
     uint8_t hash[32] = {};
     tc_sha256_init(&sha256_ctx);
-    tc_sha256_update(&sha256_ctx, rx_packet.payload.data, 0x06);
+    tc_sha256_update(&sha256_ctx, rx_packet.payload.data, 0x07);
     tc_sha256_final(hash, &sha256_ctx);
 
     const uint32_t expected_checksum =
@@ -453,31 +453,47 @@ error_t process_attest(const uint8_t *const data) {
         printf("Checksum failed %d != %d", rx_packet.header.checksum,
                expected_checksum);
         return error_t::ERROR;
-    } else if (rx_packet.payload.len != 0x06) {
-        printf("Invalid payload length %d != %d\n", rx_packet.payload.len, 0x6);
+    } else if (rx_packet.payload.len != 0x07) {
+        printf("Invalid payload length %d != %d\n", rx_packet.payload.len,
+               0x07);
         // Invalid payload length
         return error_t::ERROR;
     } else if (memcmp(rx_packet.payload.data, "ATTEST", 0x06) != 0) {
         printf("Invalid payload\n");
         // Invalid payload
         return error_t::ERROR;
-    } else if (uECC_verify(ATTEST_A_PUB, hash, 0x20, rx_packet.payload.sig,
+    } else if (rx_packet.payload.data[6] > 0x03) {
+        printf("Invalid attest position\n");
+        // Invalid attest position
+        return error_t::ERROR;
+    } else if (uECC_verify(ATTEST_A_PUB, hash, 32, rx_packet.payload.sig,
                            uECC_secp256r1()) != 1) {
+        printf("Invalid signature\n");
         // Invalid signature
         return error_t::ERROR;
     }
 
     packet_t<packet_type_t::ATTEST_ACK> tx_packet = {};
     tx_packet.header.magic = packet_magic_t::ATTEST_ACK;
-    tx_packet.payload.len = 0xC0;
+    tx_packet.payload.len = 0x40;
 
-    memcpy(tx_packet.payload.data, ATTEST_LOC_ENC, 0x40);
-    memcpy(tx_packet.payload.data + 0x40, ATTEST_DATE_ENC, 0x40);
-    memcpy(tx_packet.payload.data + 0x80, ATTEST_CUST_ENC, 0x40);
+    if (rx_packet.payload.data[6] == 0x01) {
+        memcpy(tx_packet.payload.data, ATTEST_LOC_ENC, 0x40);
+    } else if (rx_packet.payload.data[6] == 0x02) {
+        memcpy(tx_packet.payload.data, ATTEST_DATE_ENC, 0x40);
+    } else if (rx_packet.payload.data[6] == 0x03) {
+        memcpy(tx_packet.payload.data, ATTEST_CUST_ENC, 0x40);
+    }
 
-    if (uECC_sign(ATTEST_C_PRIV, tx_packet.payload.data, 0xC0,
-                  tx_packet.payload.sig, uECC_secp256r1()) != 1) {
+    sha256_ctx = {};
+    tc_sha256_init(&sha256_ctx);
+    tc_sha256_update(&sha256_ctx, tx_packet.payload.data, 64);
+    tc_sha256_final(hash, &sha256_ctx);
+
+    if (uECC_sign(ATTEST_C_PRIV, hash, 0x20, tx_packet.payload.sig,
+                  uECC_secp256r1()) != 1) {
         // Couldn't sign
+        printf("Couldn't sign\n");
         return error_t::ERROR;
     }
 
