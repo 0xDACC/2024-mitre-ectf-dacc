@@ -220,50 +220,39 @@ static void boot() {
 
 error_t component_process_cmd(const uint8_t *const data) {
     if (data == nullptr) {
-        printf("Error: Null data received\n");
         return error_t::ERROR;
     }
-    printf("Processing command %d\n", +data[0]);
     if (state == state_t::PREBOOT) {
         switch (static_cast<packet_magic_t>(data[0])) {
         case packet_magic_t::ATTEST:
-            printf("Processing attest\n");
             return process_attest(data);
             break;
         case packet_magic_t::REPLACE:
-            printf("Processing replace\n");
             return process_replace(data);
             break;
         case packet_magic_t::KEX:
-            printf("Processing kex\n");
             return process_kex(data);
             break;
         case packet_magic_t::LIST:
-            printf("Processing list\n");
             return process_list(data);
             break;
         case packet_magic_t::BOOT_SIG_REQ:
-            printf("Processing boot signature request\n");
             return process_boot_sig(data);
             break;
         default:
-            printf("Error: Unrecognized command received %d\n", data[0]);
             return error_t::ERROR;
         }
     } else if (state == state_t::VALIDATED) {
         switch (static_cast<packet_magic_t>(data[0])) {
         case packet_magic_t::BOOT:
-            printf("Processing boot\n");
             return process_boot(data);
             break;
         default:
-            printf("Error: Unrecognized command received %d\n", data[0]);
             return error_t::ERROR;
         }
     } else {
         switch (static_cast<packet_magic_t>(data[0])) {
         case packet_magic_t::ENCRYPTED:
-            printf("Processing encrypted\n");
             return error_t::SUCCESS;
             break;
         default:
@@ -329,7 +318,6 @@ error_t process_boot(const uint8_t *const data) {
 }
 
 error_t process_list(const uint8_t *const data) {
-    printf("Processing list\n");
     packet_t<packet_type_t::LIST_COMMAND> rx_packet = {};
     rx_packet.header.magic = packet_magic_t::LIST;
 
@@ -359,7 +347,6 @@ error_t process_list(const uint8_t *const data) {
 }
 
 error_t process_replace(const uint8_t *const data) {
-    printf("Processing replace\n");
     packet_t<packet_type_t::REPLACE_COMMAND> rx_packet = {};
     rx_packet.header.magic = packet_magic_t::REPLACE;
 
@@ -394,7 +381,6 @@ error_t process_replace(const uint8_t *const data) {
 }
 
 error_t process_boot_sig(const uint8_t *const data) {
-    printf("Processing boot signature\n");
     packet_t<packet_type_t::BOOT_SIG_REQ_COMMAND> rx_packet = {};
     rx_packet.header.magic = packet_magic_t::BOOT_SIG_REQ;
 
@@ -450,25 +436,18 @@ error_t process_attest(const uint8_t *const data) {
         calc_checksum(&rx_packet.payload, sizeof(rx_packet.payload));
     if (rx_packet.header.checksum != expected_checksum) {
         // Checksum failed
-        printf("Checksum failed %d != %d", rx_packet.header.checksum,
-               expected_checksum);
         return error_t::ERROR;
     } else if (rx_packet.payload.len != 0x07) {
-        printf("Invalid payload length %d != %d\n", rx_packet.payload.len,
-               0x07);
         // Invalid payload length
         return error_t::ERROR;
     } else if (memcmp(rx_packet.payload.data, "ATTEST", 0x06) != 0) {
-        printf("Invalid payload\n");
         // Invalid payload
         return error_t::ERROR;
     } else if (rx_packet.payload.data[6] > 0x03) {
-        printf("Invalid attest position\n");
         // Invalid attest position
         return error_t::ERROR;
     } else if (uECC_verify(ATTEST_A_PUB, hash, 32, rx_packet.payload.sig,
                            uECC_secp256r1()) != 1) {
-        printf("Invalid signature\n");
         // Invalid signature
         return error_t::ERROR;
     }
@@ -493,13 +472,11 @@ error_t process_attest(const uint8_t *const data) {
     if (uECC_sign(ATTEST_C_PRIV, hash, 0x20, tx_packet.payload.sig,
                   uECC_secp256r1()) != 1) {
         // Couldn't sign
-        printf("Couldn't sign\n");
         return error_t::ERROR;
     }
 
     tx_packet.header.checksum =
         calc_checksum(&tx_packet.payload, sizeof(tx_packet.payload));
-    printf("Sending Attest ACK\n");
     send_packet<packet_type_t::ATTEST_ACK>(tx_packet);
     return error_t::SUCCESS;
 }

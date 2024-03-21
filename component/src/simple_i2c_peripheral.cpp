@@ -50,11 +50,9 @@ error_t i2c_simple_peripheral_init(const uint8_t addr, const i2c_cb_t cb) {
 }
 
 void i2c_simple_isr() {
-    printf("I2C ISR\n");
     const uint32_t flags = MXC_I2C1->intfl0;
 
     if ((flags & MXC_F_I2C_INTFL0_STOP) != 0) {
-        printf("STOP\n");
         // Transaction ended
 
         const uint8_t available = MXC_I2C_GetRXFIFOAvailable(MXC_I2C1);
@@ -89,7 +87,6 @@ void i2c_simple_isr() {
 
     if ((flags & MXC_F_I2C_INTEN0_TX_THD) != 0 &&
         (MXC_I2C1->inten0 & MXC_F_I2C_INTEN0_TX_THD) != 0) {
-        printf("TX MORE\n");
         // Master reading more from us
 
         if ((flags & MXC_F_I2C_INTFL0_TX_LOCKOUT) != 0) {
@@ -115,7 +112,6 @@ void i2c_simple_isr() {
     }
 
     if ((flags & MXC_F_I2C_INTFL0_WR_ADDR_MATCH) != 0) {
-        printf("TX START\n");
         // Master requested a read from us
 
         txcnt = 0;
@@ -123,14 +119,12 @@ void i2c_simple_isr() {
         MXC_I2C_ClearFlags(MXC_I2C1, MXC_F_I2C_INTFL0_WR_ADDR_MATCH, 0);
 
         if ((flags & MXC_F_I2C_INTFL0_TX_LOCKOUT) != 0) {
-            printf("CALLING CALLBACK\n");
             // Call the callback function
 
             txcnt = 0;
             if (call_processing_callback() != error_t::SUCCESS) {
-                printf("Failed to call processing callback\n");
+                return;
             }
-            printf("CALLBACK SUCCESS\n");
 
             MXC_I2C_ClearFlags(MXC_I2C1, MXC_F_I2C_INTFL0_TX_LOCKOUT, 0);
         }
@@ -139,7 +133,6 @@ void i2c_simple_isr() {
     }
 
     if ((flags & MXC_F_I2C_INTFL0_RD_ADDR_MATCH) != 0) {
-        printf("RX START\n");
         // Master requested a write to us
 
         rxcnt = 0;
@@ -150,7 +143,6 @@ void i2c_simple_isr() {
     }
 
     if ((flags & MXC_F_I2C_INTEN0_RX_THD) != 0) {
-        printf("RX MORE\n");
         // Master writing more to us
 
         const uint8_t available = MXC_I2C_GetRXFIFOAvailable(MXC_I2C1);
