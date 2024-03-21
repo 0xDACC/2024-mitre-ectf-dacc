@@ -47,8 +47,8 @@ int tc_aes128_set_encrypt_key(TCAesKeySched_t s, const uint8_t *k) {
 	}
 
 	for (unsigned int i = 0; i < Nk; ++i) {
-		s->words[i] = (k[Nb * i] << 24) | (k[Nb * i + 1] << 16) |
-					  (k[Nb * i + 2] << 8) | (k[Nb * i + 3]);
+		s->words[i] = (k[Nb * i + 3] << 24) | (k[Nb * i + 2] << 16) |
+					  (k[Nb * i + 1] << 8) | (k[Nb * i]);
 	}
 
 	return TC_CRYPTO_SUCCESS;
@@ -64,7 +64,7 @@ int tc_aes_encrypt(uint8_t *out, const uint8_t *in, const TCAesKeySched_t s) {
 	}
 
 	mxc_aes_req_t req;
-	req.length	   = Nk * Nb / sizeof(uint32_t);
+	req.length	   = (Nk * Nb) / sizeof(uint32_t);
 	req.inputData  = (uint32_t *)in;
 	req.resultData = (uint32_t *)out;
 	req.keySize	   = MXC_AES_128BITS;
