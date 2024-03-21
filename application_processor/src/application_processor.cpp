@@ -117,9 +117,9 @@ static int secure_send(const uint8_t address, const uint8_t *const buffer,
     memcpy(&payload[6], buffer, len);
     tc_hmac_init(&hmac_ctx);
     tc_hmac_set_key(&hmac_ctx, HMAC_KEY, 32);
-    tc_hmac_update(&hmac_ctx, &payload[0], 262);
+    tc_hmac_update(&hmac_ctx, &payload[0], sizeof(payload) - 32);
     tc_hmac_final(hmac, 32, &hmac_ctx);
-    memcpy(&payload[262], hmac, 32);
+    memcpy(&payload[sizeof(payload) - 32], hmac, 32);
 
     tc_sha256_init(&sha256_ctx);
     tc_sha256_update(&sha256_ctx, shared_secrets[index], 32);
@@ -143,7 +143,7 @@ static int secure_send(const uint8_t address, const uint8_t *const buffer,
 
     if (rx_packet.header.magic != packet_magic_t::ENCRYPTED) {
         return -1;
-    } else if (rx_packet.type == packet_type_t::ERROR) {
+    } else if (rx_packet.header.magic == packet_magic_t::ERROR) {
         return -1;
     } else {
         return 0;
@@ -186,9 +186,9 @@ static int secure_receive(const i2c_addr_t address, uint8_t *const buffer) {
 
     tc_hmac_init(&hmac_ctx);
     tc_hmac_set_key(&hmac_ctx, HMAC_KEY, 32);
-    tc_hmac_update(&hmac_ctx, &payload[0], 262);
+    tc_hmac_update(&hmac_ctx, &payload[0], sizeof(payload) - 32);
     tc_hmac_final(hmac, 32, &hmac_ctx);
-    memcpy(&payload[262], hmac, 32);
+    memcpy(&payload[sizeof(payload) - 32], hmac, 32);
 
     tc_sha256_init(&sha256_ctx);
     tc_sha256_update(&sha256_ctx, shared_secrets[index], 32);
@@ -210,6 +210,10 @@ static int secure_receive(const i2c_addr_t address, uint8_t *const buffer) {
     const packet_t<packet_type_t::SECURE> rx_packet =
         send_i2c_master_tx<packet_type_t::SECURE, packet_type_t::SECURE>(
             address, tx_packet);
+
+    if (rx_packet.header.magic == packet_magic_t::ERROR) {
+        return -1;
+    }
 
     const uint32_t expected_checksum =
         calc_checksum(&rx_packet.payload, sizeof(rx_packet.payload));
@@ -233,7 +237,7 @@ static int secure_receive(const i2c_addr_t address, uint8_t *const buffer) {
 
     tc_hmac_init(&hmac_ctx);
     tc_hmac_set_key(&hmac_ctx, HMAC_KEY, 32);
-    tc_hmac_update(&hmac_ctx, &payload[0], 262);
+    tc_hmac_update(&hmac_ctx, &payload[0], sizeof(payload) - 32);
     tc_hmac_final(hmac, 32, &hmac_ctx);
 
     if (payload[0] != static_cast<uint8_t>(packet_magic_t::DECRYPTED)) {
@@ -242,7 +246,7 @@ static int secure_receive(const i2c_addr_t address, uint8_t *const buffer) {
     } else if (memcmp(&payload[2], &nonces[index], 0x04) != 0) {
         // Invalid nonce
         return -1;
-    } else if (memcmp(hmac, &payload[262], 32) != 0) {
+    } else if (memcmp(hmac, &payload[sizeof(payload) - 32], 32) != 0) {
         // HMAC failed
         return -1;
     }
@@ -319,6 +323,11 @@ static error_t list_components() {
         const packet_t<packet_type_t::LIST_ACK> rx_packet =
             send_i2c_master_tx<packet_type_t::LIST_ACK,
                                packet_type_t::LIST_COMMAND>(addr, tx_packet);
+
+        if (rx_packet.header.magic == packet_magic_t::ERROR) {
+            continue;
+        }
+
         const uint32_t expected_checksum =
             calc_checksum(&rx_packet.payload, sizeof(rx_packet.payload));
 
@@ -360,6 +369,10 @@ static error_t validate_component(const uint8_t addr) {
         send_i2c_master_tx<packet_type_t::BOOT_SIG_ACK,
                            packet_type_t::BOOT_SIG_REQ_COMMAND>(addr,
                                                                 tx_packet);
+
+    if (rx_packet.header.magic == packet_magic_t::ERROR) {
+        return error_t::ERROR;
+    }
 
     const uint32_t expected_checksum =
         calc_checksum(&rx_packet.payload, sizeof(rx_packet.payload));
@@ -411,6 +424,10 @@ static error_t boot_component(const uint8_t addr) {
         send_i2c_master_tx<packet_type_t::BOOT_ACK,
                            packet_type_t::BOOT_COMMAND>(addr, tx_packet);
 
+    if (rx_packet.header.magic == packet_magic_t::ERROR) {
+        return error_t::ERROR;
+    }
+
     sha256_ctx = {};
     tc_sha256_init(&sha256_ctx);
     tc_sha256_update(&sha256_ctx, rx_packet.payload.data, 0x40);
@@ -447,81 +464,78 @@ static error_t attest_component(const uint32_t component_id,
     uint8_t ctr[16] = {};
     memcpy(ctr, ATTEST_UNWRAPPED_NONCE, 16);
 
-    packet_t<packet_type_t::ATTEST_COMMAND> tx_packet = {};
-    tx_packet.header.magic = packet_magic_t::ATTEST;
-    tx_packet.payload.len = 0x06;
-
-    memcpy(tx_packet.payload.data, "ATTEST", 0x06);
-
-    uint8_t hash[32] = {};
-    tc_sha256_state_struct sha256_ctx = {};
-    tc_sha256_init(&sha256_ctx);
-    tc_sha256_update(&sha256_ctx, tx_packet.payload.data, 0x6);
-    tc_sha256_final(hash, &sha256_ctx);
-
-    if (uECC_sign(ATTEST_A_PRIV, hash, 32, tx_packet.payload.sig,
-                  uECC_secp256r1()) != 1) {
-        print_error("Could not attest component\n");
-        return error_t::ERROR;
-    }
-
-    tx_packet.header.checksum =
-        calc_checksum(&tx_packet.payload, sizeof(tx_packet.payload));
-    printf("Sending ATTEST\n");
-    printf("magic: %d\n", tx_packet.header.magic);
-    printf("checksum: %d\n", tx_packet.header.checksum);
-    printf("len: %d\n", tx_packet.payload.len);
-    printf("sig: %02x%02x%02x%02x%02x\n", tx_packet.payload.sig[59],
-           tx_packet.payload.sig[60], tx_packet.payload.sig[61],
-           tx_packet.payload.sig[62], tx_packet.payload.sig[63]);
-
-    const packet_t<packet_type_t::ATTEST_ACK> rx_packet =
-        send_i2c_master_tx<packet_type_t::ATTEST_ACK,
-                           packet_type_t::ATTEST_COMMAND>(addr, tx_packet);
-    const uint32_t expected_checksum =
-        calc_checksum(&rx_packet.payload, sizeof(rx_packet.payload));
-
-    sha256_ctx = {};
-    tc_sha256_init(&sha256_ctx);
-    tc_sha256_update(&sha256_ctx, rx_packet.payload.data, 192);
-    tc_sha256_final(hash, &sha256_ctx);
-
-    if (rx_packet.header.magic != packet_magic_t::ATTEST_ACK) {
-        // Invalid response
-        print_error("Could not attest component\n");
-        return error_t::ERROR;
-    } else if (rx_packet.header.checksum != expected_checksum) {
-        // Invalid checksum
-        print_error("Could not attest component\n");
-        return error_t::ERROR;
-    } else if (rx_packet.payload.len != 0xC0) {
-        // Invalid payload length
-        print_error("Could not attest component\n");
-        return error_t::ERROR;
-    } else if (uECC_verify(ATTEST_C_PUB, hash, 32, rx_packet.payload.sig,
-                           uECC_secp256r1()) != 1) {
-        // Invalid signature
-        print_error("Could not attest component\n");
-        return error_t::ERROR;
-    }
-    uint8_t attest_loc[0x40] = {};
-    uint8_t attest_date[0x40] = {};
-    uint8_t attest_cust[0x40] = {};
-
-    memcpy(attest_loc, rx_packet.payload.data, 0x40);
-    memcpy(attest_date, rx_packet.payload.data + 0x40, 0x40);
-    memcpy(attest_cust, rx_packet.payload.data + 0x80, 0x40);
-
     tc_aes_key_sched_struct aes_key = {};
-    tc_ctr_mode(attest_loc, 0x40, rx_packet.payload.data, 0x40, ctr, &aes_key);
-    tc_ctr_mode(attest_date, 0x40, rx_packet.payload.data + 0x40, 0x40, ctr,
-                &aes_key);
-    tc_ctr_mode(attest_cust, 0x40, rx_packet.payload.data + 0x80, 0x40, ctr,
-                &aes_key);
+    tc_aes128_set_encrypt_key(&aes_key, unwrapped_key);
 
-    print_info("C>0x%08lx\n", component_id);
-    print_info("LOC>%.64s\nDATE>%.64s\nCUST>%.64s\n", attest_loc, attest_date,
-               attest_cust);
+    const char *const fmts[3] = {"LOC", "DATE", "CUST"};
+    uint8_t out[64] = {};
+
+    for (uint8_t i = 0; i < 3; ++i) {
+        packet_t<packet_type_t::ATTEST_COMMAND> tx_packet = {};
+        tx_packet.header.magic = packet_magic_t::ATTEST;
+        tx_packet.payload.len = 0x07;
+
+        memcpy(tx_packet.payload.data, "ATTEST", 0x06);
+        tx_packet.payload.data[6] = i + 1;
+
+        uint8_t hash[32] = {};
+        tc_sha256_state_struct sha256_ctx = {};
+        tc_sha256_init(&sha256_ctx);
+        tc_sha256_update(&sha256_ctx, tx_packet.payload.data, 0x07);
+        tc_sha256_final(hash, &sha256_ctx);
+
+        if (uECC_sign(ATTEST_A_PRIV, hash, 32, tx_packet.payload.sig,
+                      uECC_secp256r1()) != 1) {
+            print_error("Could not attest component\n");
+            return error_t::ERROR;
+        }
+
+        tx_packet.header.checksum =
+            calc_checksum(&tx_packet.payload, sizeof(tx_packet.payload));
+
+        const packet_t<packet_type_t::ATTEST_ACK> rx_packet =
+            send_i2c_master_tx<packet_type_t::ATTEST_ACK,
+                               packet_type_t::ATTEST_COMMAND>(addr, tx_packet);
+
+        if (rx_packet.header.magic == packet_magic_t::ERROR) {
+            continue;
+        }
+
+        const uint32_t expected_checksum =
+            calc_checksum(&rx_packet.payload, sizeof(rx_packet.payload));
+
+        sha256_ctx = {};
+        tc_sha256_init(&sha256_ctx);
+        tc_sha256_update(&sha256_ctx, rx_packet.payload.data, 64);
+        tc_sha256_final(hash, &sha256_ctx);
+
+        if (rx_packet.header.magic != packet_magic_t::ATTEST_ACK) {
+            // Invalid response
+            print_error("Invalid response\n");
+            return error_t::ERROR;
+        } else if (rx_packet.header.checksum != expected_checksum) {
+            // Invalid checksum
+            print_error("Invalid checksum\n");
+            return error_t::ERROR;
+        } else if (rx_packet.payload.len != 0x40) {
+            // Invalid payload length
+            print_error("Invalid payload length\n");
+            return error_t::ERROR;
+        } else if (uECC_verify(ATTEST_C_PUB, hash, 32, rx_packet.payload.sig,
+                               uECC_secp256r1()) != 1) {
+            // Invalid signature
+            print_error("Invalid signature\n");
+            return error_t::ERROR;
+        }
+
+        if (i == 0) {
+            print_info("C>0x%08lx\n", component_id);
+        }
+
+        tc_ctr_mode(out, 0x40, rx_packet.payload.data, 0x40, ctr, &aes_key);
+        print_info("%s>%.64s\n", fmts[i], out);
+    }
+
     return error_t::SUCCESS;
 }
 
@@ -553,8 +567,14 @@ static error_t perform_kex(const uint8_t addr) {
     const packet_t<packet_type_t::KEX> rx_packet =
         send_i2c_master_tx<packet_type_t::KEX, packet_type_t::KEX>(addr,
                                                                    tx_packet);
+
+    if (rx_packet.header.magic == packet_magic_t::ERROR) {
+        return error_t::ERROR;
+    }
+
     const uint32_t expected_checksum =
         calc_checksum(&rx_packet.payload, sizeof(rx_packet.payload));
+
     sha256_ctx = {};
     tc_sha256_init(&sha256_ctx);
     tc_sha256_update(&sha256_ctx, rx_packet.payload.material, 0x40);
@@ -651,7 +671,7 @@ static void attempt_boot() {
 }
 
 static void attempt_replace() {
-    char buf[5] = {};
+    char buf[9] = {};
 
     if (validate_token() != error_t::SUCCESS) {
         return;
@@ -747,6 +767,12 @@ static void attempt_attest() {
         print_error("Invalid PIN!\n");
         return;
     }
+
+    tc_sha256_init(&sha256_ctx);
+    for (uint32_t i = 0; i < ITERATIONS - 1; ++i) {
+        tc_sha256_update(&sha256_ctx, pin, 6);
+    }
+    tc_sha256_final(hash, &sha256_ctx);
 
     memcpy(wrapper_iv, ATTEST_WRAPPER_NONCE, 16);
 
