@@ -64,11 +64,11 @@ struct flash_entry_t {
 // Variable for information stored in flash memory
 flash_entry_t flash_status;
 
-uint8_t shared_secrets[32][COMPONENT_CNT] = {};
-uint8_t private_keys[32][COMPONENT_CNT] = {};
-uint8_t public_keys[64][COMPONENT_CNT] = {};
+uint8_t shared_secrets[COMPONENT_CNT][32] = {};
+uint8_t private_keys[COMPONENT_CNT][32] = {};
+uint8_t public_keys[COMPONENT_CNT][64] = {};
 uint32_t nonces[COMPONENT_CNT] = {};
-uint8_t ctrs[16][COMPONENT_CNT] = {};
+uint8_t ctrs[COMPONENT_CNT][16] = {};
 
 static inline uint8_t cid_to_idx(const i2c_addr_t id) {
     for (uint8_t i = 0; i < COMPONENT_CNT; ++i) {
@@ -402,7 +402,7 @@ static error_t validate_component(const uint8_t addr) {
 static error_t boot_component(const uint8_t addr) {
     packet_t<packet_type_t::BOOT_COMMAND> tx_packet = {};
     tx_packet.header.magic = packet_magic_t::BOOT;
-    tx_packet.payload.len = 0x20;
+    tx_packet.payload.len = 0x04;
     memcpy(&tx_packet.payload.data, "BOOT", 0x04);
 
     tc_sha256_state_struct sha256_ctx = {};
@@ -454,7 +454,7 @@ static error_t boot_component(const uint8_t addr) {
         return error_t::ERROR;
     }
 
-    print_info("0x%08lx>%.64s\n", addr, rx_packet.payload.data);
+    print_info("0x%08lx>%.64s\n", +addr, rx_packet.payload.data);
     return error_t::SUCCESS;
 }
 
@@ -582,19 +582,24 @@ static error_t perform_kex(const uint8_t addr) {
 
     if (rx_packet.header.magic != packet_magic_t::KEX) {
         // Invalid response
+        print_error("Invalid response\n");
         return error_t::ERROR;
     } else if (rx_packet.header.checksum != expected_checksum) {
         // Invalid checksum
+        print_error("Invalid checksum\n");
         return error_t::ERROR;
     } else if (memcmp(rx_packet.payload.hash, hash, 0x20) != 0) {
         // Invalid hash
+        print_error("Invalid hash\n");
         return error_t::ERROR;
-    } else if (rx_packet.payload.len != 0x60) {
+    } else if (rx_packet.payload.len != 0x40) {
         // Invalid payload
+        print_error("Invalid payload\n");
         return error_t::ERROR;
     } else if (uECC_valid_public_key(rx_packet.payload.material,
                                      uECC_secp256r1()) != 0) {
         // Invalid public key
+        print_error("Invalid public key\n");
         return error_t::ERROR;
     }
     uECC_shared_secret(rx_packet.payload.material, private_keys[index],
@@ -663,8 +668,8 @@ static void attempt_boot() {
             print_error("Failed to boot component\n");
             return;
         }
+        print_debug("booted\n");
     }
-
     print_info("AP>%.64s\n", AP_BOOT_MSG);
     print_success("Boot\n");
     boot();

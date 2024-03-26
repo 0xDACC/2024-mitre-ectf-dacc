@@ -256,7 +256,6 @@ error_t component_process_cmd(const uint8_t *const data) {
             return error_t::SUCCESS;
             break;
         default:
-            printf("Error: Unrecognized command received %d\n", data[0]);
             return error_t::ERROR;
         }
     }
@@ -284,7 +283,7 @@ error_t process_boot(const uint8_t *const data) {
     } else if (rx_packet.payload.len != 0x04) {
         // Invalid payload length
         return error_t::ERROR;
-    } else if (memcmp(rx_packet.payload.data, "BOOT", 0x4) != 0) {
+    } else if (memcmp(rx_packet.payload.data, "BOOT", 0x04) != 0) {
         // Invalid payload
         return error_t::ERROR;
     } else if (uECC_verify(BOOT_A_PUB, hash, 0x20, rx_packet.payload.sig,
@@ -292,27 +291,23 @@ error_t process_boot(const uint8_t *const data) {
         // Invalid signature
         return error_t::ERROR;
     }
-
     packet_t<packet_type_t::BOOT_ACK> tx_packet;
     tx_packet.header.magic = packet_magic_t::BOOT_ACK;
     tx_packet.payload.len = 0x40;
     memcpy(tx_packet.payload.data, COMPONENT_BOOT_MSG, 0x40);
-
     sha256_ctx = {};
     tc_sha256_init(&sha256_ctx);
     tc_sha256_update(&sha256_ctx, tx_packet.payload.data, 0x40);
     tc_sha256_final(hash, &sha256_ctx);
-
     if (uECC_sign(BOOT_C_PRIV, hash, 0x20, tx_packet.payload.sig,
                   uECC_secp256r1()) != 1) {
         // Couldn't sign
         return error_t::ERROR;
     }
-
     tx_packet.header.checksum =
         calc_checksum(&tx_packet.payload, sizeof(tx_packet.payload));
-
     send_packet<packet_type_t::BOOT_ACK>(tx_packet);
+
     state = state_t::POSTBOST;
     return error_t::SUCCESS;
 }
@@ -511,6 +506,10 @@ error_t process_kex(const uint8_t *const data) {
     } else if (memcmp(rx_packet.payload.hash, expected_hash, 0x20) != 0) {
         // Invalid hash
         return error_t::ERROR;
+    } else if (uECC_valid_public_key(rx_packet.payload.material,
+                                     uECC_secp256r1()) != 0) {
+        // Invalid public key
+        return error_t::ERROR;
     }
 
     uECC_make_key(public_key, private_key, uECC_secp256r1());
@@ -520,7 +519,7 @@ error_t process_kex(const uint8_t *const data) {
     packet_t<packet_type_t::KEX> tx_packet;
     tx_packet.header.magic = packet_magic_t::KEX;
     tx_packet.payload.len = 0x40;
-    uECC_compute_public_key(private_key, rx_packet.payload.material,
+    uECC_compute_public_key(private_key, tx_packet.payload.material,
                             uECC_secp256r1());
 
     sha256_ctx = {};
