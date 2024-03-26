@@ -38,8 +38,6 @@
 #include <tinycrypt/utils.h>
 
 int tc_aes128_set_encrypt_key(TCAesKeySched_t s, const uint8_t *k) {
-	unsigned int i;
-
 	if (s == (TCAesKeySched_t)0) {
 		return TC_CRYPTO_FAIL;
 	} else if (k == (const uint8_t *)0) {
@@ -54,10 +52,10 @@ int tc_aes128_set_encrypt_key(TCAesKeySched_t s, const uint8_t *k) {
 	return TC_CRYPTO_SUCCESS;
 }
 
-int tc_aes_encrypt(uint8_t *out, const uint8_t *in, const TCAesKeySched_t s) {
+int tc_aes_encrypt(uint8_t *out, uint8_t *in, const TCAesKeySched_t s) {
 	if (out == (uint8_t *)0) {
 		return TC_CRYPTO_FAIL;
-	} else if (in == (const uint8_t *)0) {
+	} else if (in == (uint8_t *)0) {
 		return TC_CRYPTO_FAIL;
 	} else if (s == (const TCAesKeySched_t)0) {
 		return TC_CRYPTO_FAIL;

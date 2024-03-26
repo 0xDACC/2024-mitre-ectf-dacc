@@ -46,8 +46,8 @@
  *              2) call tc_aes_encrypt/decrypt to process the data.
  */
 
-#ifndef __TC_AES_H__
-#define __TC_AES_H__
+#ifndef AES
+#define AES
 
 #include <stdint.h>
 
@@ -91,10 +91,10 @@ int tc_aes128_set_encrypt_key(TCAesKeySched_t s, const uint8_t *k);
  *  @param in IN -- a plaintext block to encrypt
  *  @param s IN -- initialized AES key schedule
  */
-int tc_aes_encrypt(uint8_t *out, const uint8_t *in, const TCAesKeySched_t s);
+int tc_aes_encrypt(uint8_t *out, uint8_t *in, const TCAesKeySched_t s);
 
 #ifdef __cplusplus
 }
 #endif
 
-#endif /* __TC_AES_H__ */
+#endif /* AES */
