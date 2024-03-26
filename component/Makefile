@@ -422,6 +422,7 @@ endif
 
 all: secrets
 # 	Extend the functionality of the "all" recipe here
+	arm-none-eabi-strip --strip-all $(BUILD_DIR)/$(PROJECT).elf
 	arm-none-eabi-size --format=berkeley $(BUILD_DIR)/$(PROJECT).elf
 
 libclean: 
