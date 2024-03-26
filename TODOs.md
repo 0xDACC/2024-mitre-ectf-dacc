@@ -2,8 +2,13 @@
 
 ## Other
 
-- [ ] Fix I2C bug
+- [X] Fix I2C bug
 - [ ] Test design
+  - [X] List
+  - [X] Attest
+  - [ ] Replace
+  - [X] Boot
+  - [ ] Secure S&R
 - [ ] Verify functionality
 
 ## List
