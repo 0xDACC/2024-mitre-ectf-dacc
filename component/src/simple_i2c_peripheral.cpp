@@ -123,7 +123,7 @@ void i2c_simple_isr() {
 
             txcnt = 0;
             if (call_processing_callback() != error_t::SUCCESS) {
-                return;
+                clear();
             }
 
             MXC_I2C_ClearFlags(MXC_I2C1, MXC_F_I2C_INTFL0_TX_LOCKOUT, 0);

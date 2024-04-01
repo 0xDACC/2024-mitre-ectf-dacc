@@ -16,7 +16,6 @@
 #include "icc.h"
 #include "led.h"
 
-#include <stdbool.h>
 #include <stdint.h>
 #include <string.h>
 
@@ -64,11 +63,11 @@ struct flash_entry_t {
 // Variable for information stored in flash memory
 flash_entry_t flash_status;
 
-uint8_t shared_secrets[COMPONENT_CNT][32] = {};
-uint8_t private_keys[COMPONENT_CNT][32] = {};
-uint8_t public_keys[COMPONENT_CNT][64] = {};
-uint32_t nonces[COMPONENT_CNT] = {};
-uint8_t ctrs[COMPONENT_CNT][16] = {};
+static uint8_t shared_secrets[COMPONENT_CNT][32] = {};
+static uint8_t private_keys[COMPONENT_CNT][32] = {};
+static uint8_t public_keys[COMPONENT_CNT][64] = {};
+static uint32_t nonces[COMPONENT_CNT] = {};
+static uint8_t ctrs[COMPONENT_CNT][16] = {};
 
 static inline uint8_t cid_to_idx(const i2c_addr_t id) {
     for (uint8_t i = 0; i < COMPONENT_CNT; ++i) {
@@ -308,7 +307,7 @@ static error_t list_components() {
         print_info("P>0x%08lx\n", flash_status.component_ids[i]);
     }
 
-    for (i2c_addr_t addr = 0x8; addr < 0x78; ++addr) {
+    for (i2c_addr_t addr = 0x08; addr < 0x78; ++addr) {
         if (addr == 0x18 || addr == 0x28 || addr == 0x36) {
             continue;
         }

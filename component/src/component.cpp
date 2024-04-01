@@ -18,7 +18,6 @@
 #include "mxc_errors.h"
 #include "nvic_table.h"
 
-#include <stdbool.h>
 #include <stdio.h>
 #include <string.h>
 
@@ -47,13 +46,13 @@
 #include <string.h>
 #endif
 
-volatile state_t state = state_t::PREBOOT;
+static volatile state_t state = state_t::PREBOOT;
 
-uint8_t shared_secret[32] = {};
-uint8_t private_key[32] = {};
-uint8_t public_key[64] = {};
-uint32_t nonce = {};
-uint8_t ctr[16] = {};
+static uint8_t shared_secret[32] = {};
+static uint8_t private_key[32] = {};
+static uint8_t public_key[64] = {};
+static uint32_t nonce = {};
+static uint8_t ctr[16] = {};
 using namespace i2c;
 
 void secure_send(const uint8_t *const buffer, const uint8_t len) {

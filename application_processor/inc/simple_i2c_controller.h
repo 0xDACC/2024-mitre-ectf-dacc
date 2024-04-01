@@ -15,7 +15,7 @@
 #include "errors.h"
 #include "mxc.h"
 #include "packets.h"
-#include "stdint.h"
+#include <stdint.h>
 
 namespace i2c {
 // I2C frequency in HZ
