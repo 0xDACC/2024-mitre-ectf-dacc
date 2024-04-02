@@ -349,70 +349,18 @@ static error_t list_components() {
     return error_t::SUCCESS;
 }
 
-static error_t validate_component(const uint8_t addr) {
-    packet_t<packet_type_t::BOOT_SIG_REQ_COMMAND> tx_packet = {};
-    tx_packet.header.magic = packet_magic_t::BOOT_SIG_REQ;
-    tx_packet.payload.len = 0x60;
-    random_bytes(tx_packet.payload.data, 0x20);
-
-    if (uECC_sign(BOOT_A_PRIV, tx_packet.payload.data, 0x20,
-                  tx_packet.payload.sig, uECC_secp256r1()) != 1) {
-        print_error("Could not validate component\n");
-        return error_t::ERROR;
-    }
-
-    tx_packet.header.checksum =
-        calc_checksum(&tx_packet.payload, sizeof(tx_packet.payload));
-
-    const packet_t<packet_type_t::BOOT_SIG_ACK> rx_packet =
-        send_i2c_master_tx<packet_type_t::BOOT_SIG_ACK,
-                           packet_type_t::BOOT_SIG_REQ_COMMAND>(addr,
-                                                                tx_packet);
-
-    if (rx_packet.header.magic == packet_magic_t::ERROR) {
-        return error_t::ERROR;
-    }
-
-    const uint32_t expected_checksum =
-        calc_checksum(&rx_packet.payload, sizeof(rx_packet.payload));
-
-    if (rx_packet.header.magic != packet_magic_t::BOOT_SIG_ACK) {
-        // Invalid response
-        print_error("Could not validate component\n");
-        return error_t::ERROR;
-    } else if (rx_packet.header.checksum != expected_checksum) {
-        // Invalid checksum
-        print_error("Could not validate component\n");
-        return error_t::ERROR;
-    } else if (rx_packet.payload.len != 0x40) {
-        // Invalid payload length
-        print_error("Could not validate component\n");
-        return error_t::ERROR;
-    } else if (uECC_verify(BOOT_C_PUB, tx_packet.payload.data, 0x20,
-                           rx_packet.payload.data, uECC_secp256r1()) != 1) {
-        // Invalid signature
-        print_error("Could not validate component\n");
-        return error_t::ERROR;
-    }
-
-    return error_t::SUCCESS;
-}
-
 static error_t boot_component(const uint32_t component_id) {
     const i2c_addr_t addr = component_id_to_i2c_addr(component_id);
     packet_t<packet_type_t::BOOT_COMMAND> tx_packet = {};
     tx_packet.header.magic = packet_magic_t::BOOT;
-    tx_packet.payload.len = 0x04;
-    memcpy(&tx_packet.payload.data, "BOOT", 0x04);
+    tx_packet.payload.len = 0x60;
+    random_bytes(tx_packet.payload.data, 0x20);
 
     tc_sha256_state_struct sha256_ctx = {};
     uint8_t hash[32] = {};
-    tc_sha256_init(&sha256_ctx);
-    tc_sha256_update(&sha256_ctx, tx_packet.payload.data, 0x04);
-    tc_sha256_final(hash, &sha256_ctx);
 
-    if (uECC_sign(BOOT_A_PRIV, hash, 32, tx_packet.payload.sig,
-                  uECC_secp256r1()) != 1) {
+    if (uECC_sign(BOOT_A_PRIV, tx_packet.payload.data, 0x20,
+                  tx_packet.payload.sig, uECC_secp256r1()) != 1) {
         print_error("Could not boot component\n");
         return error_t::ERROR;
     }
@@ -447,8 +395,8 @@ static error_t boot_component(const uint32_t component_id) {
         // Invalid payload length
         print_error("Could not boot component\n");
         return error_t::ERROR;
-    } else if (uECC_verify(BOOT_C_PUB, hash, 32, rx_packet.payload.sig,
-                           uECC_secp256r1()) != 1) {
+    } else if (uECC_verify(BOOT_C_PUB, tx_packet.payload.data, 0x20,
+                           rx_packet.payload.sig, uECC_secp256r1()) != 1) {
         // Invalid signature
         print_error("Could not boot component\n");
         return error_t::ERROR;
@@ -657,12 +605,8 @@ static error_t validate_token() {
 static void attempt_boot() {
     for (uint32_t i = 0; i < flash_status.component_cnt; ++i) {
         const uint32_t component_id = flash_status.component_ids[i];
-        const i2c_addr_t addr = component_id_to_i2c_addr(component_id);
 
-        if (validate_component(addr) != error_t::SUCCESS) {
-            print_error("Failed to validate component\n");
-            return;
-        } else if (boot_component(component_id) != error_t::SUCCESS) {
+        if (boot_component(component_id) != error_t::SUCCESS) {
             print_error("Failed to boot component\n");
             return;
         }

@@ -235,14 +235,6 @@ error_t component_process_cmd(const uint8_t *const data) {
         case packet_magic_t::LIST:
             return process_list(data);
             break;
-        case packet_magic_t::BOOT_SIG_REQ:
-            return process_boot_sig(data);
-            break;
-        default:
-            return error_t::ERROR;
-        }
-    } else if (state == state_t::VALIDATED) {
-        switch (static_cast<packet_magic_t>(data[0])) {
         case packet_magic_t::BOOT:
             return process_boot(data);
             break;
@@ -262,65 +254,61 @@ error_t component_process_cmd(const uint8_t *const data) {
 
 error_t process_boot(const uint8_t *const data) {
     packet_t<packet_type_t::BOOT_COMMAND> rx_packet;
-    rx_packet.header.magic = packet_magic_t::LIST;
+    rx_packet.header.magic = static_cast<packet_magic_t>(data[0]);
 
     memcpy(&rx_packet.header.checksum, &data[1], 0x04);
     memcpy(&rx_packet.payload, &data[5], sizeof(rx_packet.payload));
 
-    tc_sha256_state_struct sha256_ctx = {};
-    uint8_t hash[32] = {};
-    tc_sha256_init(&sha256_ctx);
-    tc_sha256_update(&sha256_ctx, rx_packet.payload.data, 0x04);
-    tc_sha256_final(hash, &sha256_ctx);
-
     const uint32_t expected_checksum =
         calc_checksum(&rx_packet.payload, sizeof(rx_packet.payload));
 
-    if (rx_packet.header.checksum != expected_checksum) {
+    if (rx_packet.header.magic != packet_magic_t::BOOT) {
+        // Invalid magic
+        return error_t::ERROR;
+    } else if (rx_packet.header.checksum != expected_checksum) {
         // Checksum failed
         return error_t::ERROR;
-    } else if (rx_packet.payload.len != 0x04) {
+    } else if (rx_packet.payload.len != 0x60) {
         // Invalid payload length
         return error_t::ERROR;
-    } else if (memcmp(rx_packet.payload.data, "BOOT", 0x04) != 0) {
-        // Invalid payload
-        return error_t::ERROR;
-    } else if (uECC_verify(BOOT_A_PUB, hash, 0x20, rx_packet.payload.sig,
-                           uECC_secp256r1()) != 1) {
+    } else if (uECC_verify(BOOT_A_PUB, rx_packet.payload.data, 0x20,
+                           rx_packet.payload.sig, uECC_secp256r1()) != 1) {
         // Invalid signature
         return error_t::ERROR;
     }
+
     packet_t<packet_type_t::BOOT_ACK> tx_packet;
     tx_packet.header.magic = packet_magic_t::BOOT_ACK;
     tx_packet.payload.len = 0x40;
     memcpy(tx_packet.payload.data, COMPONENT_BOOT_MSG, 0x40);
-    sha256_ctx = {};
-    tc_sha256_init(&sha256_ctx);
-    tc_sha256_update(&sha256_ctx, tx_packet.payload.data, 0x40);
-    tc_sha256_final(hash, &sha256_ctx);
-    if (uECC_sign(BOOT_C_PRIV, hash, 0x20, tx_packet.payload.sig,
-                  uECC_secp256r1()) != 1) {
+
+    if (uECC_sign(BOOT_C_PRIV, rx_packet.payload.data, 0x20,
+                  tx_packet.payload.sig, uECC_secp256r1()) != 1) {
         // Couldn't sign
         return error_t::ERROR;
     }
     tx_packet.header.checksum =
         calc_checksum(&tx_packet.payload, sizeof(tx_packet.payload));
-    send_packet<packet_type_t::BOOT_ACK>(tx_packet);
 
+    send_packet<packet_type_t::BOOT_ACK>(tx_packet);
     state = state_t::POSTBOST;
     return error_t::SUCCESS;
 }
 
 error_t process_list(const uint8_t *const data) {
     packet_t<packet_type_t::LIST_COMMAND> rx_packet = {};
-    rx_packet.header.magic = packet_magic_t::LIST;
+    rx_packet.header.magic = static_cast<packet_magic_t>(data[0]);
 
     memcpy(&rx_packet.header.checksum, &data[1], 0x04);
     memcpy(&rx_packet.payload, &data[5], sizeof(rx_packet.payload));
 
     const uint32_t expected_checksum =
         calc_checksum(&rx_packet.payload, sizeof(rx_packet.payload));
-    if (rx_packet.header.checksum != expected_checksum) {
+
+    if (rx_packet.header.magic != packet_magic_t::LIST) {
+        // Invalid magic
+        return error_t::ERROR;
+    } else if (rx_packet.header.checksum != expected_checksum) {
         // Checksum failed
         return error_t::ERROR;
     } else if (rx_packet.payload.len != 0x00) {
@@ -342,14 +330,17 @@ error_t process_list(const uint8_t *const data) {
 
 error_t process_replace(const uint8_t *const data) {
     packet_t<packet_type_t::REPLACE_COMMAND> rx_packet = {};
-    rx_packet.header.magic = packet_magic_t::REPLACE;
+    rx_packet.header.magic = static_cast<packet_magic_t>(data[0]);
 
     memcpy(&rx_packet.header.checksum, &data[1], 0x04);
     memcpy(&rx_packet.payload, &data[5], sizeof(rx_packet.payload));
 
     const uint32_t expected_checksum =
         calc_checksum(&rx_packet.payload, sizeof(rx_packet.payload));
-    if (rx_packet.header.checksum != expected_checksum) {
+    if (rx_packet.header.magic != packet_magic_t::REPLACE) {
+        // Invalid magic
+        return error_t::ERROR;
+    } else if (rx_packet.header.checksum != expected_checksum) {
         // Checksum failed
         return error_t::ERROR;
     } else if (rx_packet.payload.len != 0x20) {
@@ -374,48 +365,9 @@ error_t process_replace(const uint8_t *const data) {
     return error_t::SUCCESS;
 }
 
-error_t process_boot_sig(const uint8_t *const data) {
-    packet_t<packet_type_t::BOOT_SIG_REQ_COMMAND> rx_packet = {};
-    rx_packet.header.magic = packet_magic_t::BOOT_SIG_REQ;
-
-    memcpy(&rx_packet.header.checksum, &data[1], 0x04);
-    memcpy(&rx_packet.payload, &data[5], sizeof(rx_packet.payload));
-
-    const uint32_t expected_checksum =
-        calc_checksum(&rx_packet.payload, sizeof(rx_packet.payload));
-    if (rx_packet.header.checksum != expected_checksum) {
-        // Checksum failed
-        return error_t::ERROR;
-    } else if (rx_packet.payload.len != 0x60) {
-        // Invalid payload length
-        return error_t::ERROR;
-    } else if (uECC_verify(BOOT_A_PUB, rx_packet.payload.data, 0x20,
-                           rx_packet.payload.sig, uECC_secp256r1()) != 1) {
-        // Invalid signature
-        return error_t::ERROR;
-    }
-
-    packet_t<packet_type_t::BOOT_SIG_ACK> tx_packet = {};
-    tx_packet.header.magic = packet_magic_t::BOOT_SIG_ACK;
-    tx_packet.payload.len = 0x40;
-
-    if (uECC_sign(BOOT_C_PRIV, rx_packet.payload.data, 0x20,
-                  tx_packet.payload.data, uECC_secp256r1()) != 1) {
-        // Couldn't sign
-        return error_t::ERROR;
-    }
-
-    tx_packet.header.checksum =
-        calc_checksum(&tx_packet.payload, sizeof(tx_packet.payload));
-
-    send_packet<packet_type_t::BOOT_SIG_ACK>(tx_packet);
-    state = state_t::VALIDATED;
-    return error_t::SUCCESS;
-}
-
 error_t process_attest(const uint8_t *const data) {
     packet_t<packet_type_t::ATTEST_COMMAND> rx_packet = {};
-    rx_packet.header.magic = packet_magic_t::ATTEST;
+    rx_packet.header.magic = static_cast<packet_magic_t>(data[0]);
 
     memcpy(&rx_packet.header.checksum, &data[1], 0x04);
     memcpy(&rx_packet.payload, &data[5], sizeof(rx_packet.payload));
@@ -428,7 +380,10 @@ error_t process_attest(const uint8_t *const data) {
 
     const uint32_t expected_checksum =
         calc_checksum(&rx_packet.payload, sizeof(rx_packet.payload));
-    if (rx_packet.header.checksum != expected_checksum) {
+    if (rx_packet.header.magic != packet_magic_t::ATTEST) {
+        // Invalid magic
+        return error_t::ERROR;
+    } else if (rx_packet.header.checksum != expected_checksum) {
         // Checksum failed
         return error_t::ERROR;
     } else if (rx_packet.payload.len != 0x07) {
