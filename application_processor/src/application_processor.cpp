@@ -398,7 +398,8 @@ static error_t validate_component(const uint8_t addr) {
     return error_t::SUCCESS;
 }
 
-static error_t boot_component(const uint8_t addr) {
+static error_t boot_component(const uint32_t component_id) {
+    const i2c_addr_t addr = component_id_to_i2c_addr(component_id);
     packet_t<packet_type_t::BOOT_COMMAND> tx_packet = {};
     tx_packet.header.magic = packet_magic_t::BOOT;
     tx_packet.payload.len = 0x04;
@@ -453,7 +454,7 @@ static error_t boot_component(const uint8_t addr) {
         return error_t::ERROR;
     }
 
-    print_info("0x%08lx>%.64s\n", +addr, rx_packet.payload.data);
+    print_info("0x%08lx>%.64s\n", component_id, rx_packet.payload.data);
     return error_t::SUCCESS;
 }
 
@@ -655,19 +656,19 @@ static error_t validate_token() {
 
 static void attempt_boot() {
     for (uint32_t i = 0; i < flash_status.component_cnt; ++i) {
-        const i2c_addr_t addr =
-            component_id_to_i2c_addr(flash_status.component_ids[i]);
+        const uint32_t component_id = flash_status.component_ids[i];
+        const i2c_addr_t addr = component_id_to_i2c_addr(component_id);
+
         if (perform_kex(addr) != error_t::SUCCESS) {
             print_error("Failed to perform key exchange with component\n");
             return;
         } else if (validate_component(addr) != error_t::SUCCESS) {
             print_error("Failed to validate component\n");
             return;
-        } else if (boot_component(addr) != error_t::SUCCESS) {
+        } else if (boot_component(component_id) != error_t::SUCCESS) {
             print_error("Failed to boot component\n");
             return;
         }
-        print_debug("booted\n");
     }
     print_info("AP>%.64s\n", AP_BOOT_MSG);
     print_success("Boot\n");
