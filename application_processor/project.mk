@@ -5,7 +5,7 @@
 # For instructions on how to use this system, see
 # https://analog-devices-msdk.github.io/msdk/USERGUIDE/#build-system
 
-#MXC_OPTIMIZE_CFLAGS = -Os
+MXC_OPTIMIZE_CFLAGS = -O3
 # ^ For example, you can uncomment this line to 
 # optimize the project for debugging
 
@@ -26,7 +26,7 @@ VPATH+=../lib/tinycrypt/src
 
 
 #PROJ_CFLAGS+=-Wall -Wextra -s -fomit-frame-pointer -fno-unwind-tables -fno-asynchronous-unwind-tables -fno-math-errno -fno-ident -ffast-math -nostdlib -nostdinc++
-#PROJ_CFLAGS+=-Wall -s -fomit-frame-pointer -fno-unwind-tables -fno-asynchronous-unwind-tables -fno-math-errno -fno-ident -ffast-math -nostdlib -nostdinc++
+PROJ_CFLAGS+=-Wall -s -fomit-frame-pointer -fno-unwind-tables -fno-asynchronous-unwind-tables -fno-math-errno -fno-ident -ffast-math -nostdlib -nostdinc++
 # ****************** eCTF Bootloader *******************
 # DO NOT REMOVE
 LINKERFILE=firmware.ld
