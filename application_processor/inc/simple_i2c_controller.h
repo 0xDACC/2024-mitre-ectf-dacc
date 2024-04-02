@@ -67,6 +67,7 @@ packet_t<R> send_i2c_master_tx(const i2c_addr_t addr, packet_t<T> packet) {
     } else {
         packet_t<R> error_packet = {};
         error_packet.header.magic = packet_magic_t::ERROR;
+        print_error("I2C Transaction Error: %d", error);
         return error_packet;
     }
 }
