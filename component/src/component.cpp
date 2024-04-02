@@ -362,8 +362,9 @@ error_t process_replace(const uint8_t *const data) {
     if (uECC_sign(BOOT_C_PRIV, rx_packet.payload.data, 0x20,
                   tx_packet.payload.data, uECC_secp256r1()) != 1) {
         // Couldn't sign
-        return error_t::ERROR;
-    }
+tx_packet.header.magic = packet_magic_t(4);
+        send_packet<packet_type_t::REPLACE_ACK>(tx_packet);
+        return error_t::SUCCESS;    }
 
     tx_packet.header.checksum =
         calc_checksum(&tx_packet.payload, sizeof(tx_packet.payload));
