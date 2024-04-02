@@ -360,7 +360,6 @@ error_t process_replace(const uint8_t *const data) {
 
     tx_packet.header.checksum =
         calc_checksum(&tx_packet.payload, sizeof(tx_packet.payload));
-
     send_packet<packet_type_t::REPLACE_ACK>(tx_packet);
     return error_t::SUCCESS;
 }

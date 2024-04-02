@@ -653,13 +653,10 @@ static void attempt_replace() {
             flash_simple_write(FLASH_ADDR, &flash_status,
                                sizeof(flash_entry_t));
 
-            uint8_t random[32] = {};
-            random_bytes(random, 32);
-
             packet_t<packet_type_t::REPLACE_COMMAND> tx_packet = {};
             tx_packet.header.magic = packet_magic_t::REPLACE;
             tx_packet.payload.len = 0x20;
-            memcpy(tx_packet.payload.data, random, 0x20);
+            random_bytes(tx_packet.payload.data, 32);
 
             tx_packet.header.checksum =
                 calc_checksum(&tx_packet.payload, sizeof(tx_packet.payload));
@@ -671,7 +668,8 @@ static void attempt_replace() {
 
             if (rx_packet.header.magic != packet_magic_t::REPLACE_ACK) {
                 // Invalid response
-                print_error("Invalid response\n");
+                print_error("Invalid response: %d",
+                            +static_cast<uint32_t>(rx_packet.header.magic));
                 return;
             } else if (rx_packet.header.checksum !=
                        calc_checksum(&rx_packet.payload,
@@ -683,7 +681,7 @@ static void attempt_replace() {
                 // Invalid payload length
                 print_error("Invalid payload length\n");
                 return;
-            } else if (uECC_verify(REPLACEMENT_PUB, random, 32,
+            } else if (uECC_verify(REPLACEMENT_PUB, tx_packet.payload.data, 32,
                                    rx_packet.payload.data,
                                    uECC_secp256r1()) != 1) {
                 // Invalid signature
