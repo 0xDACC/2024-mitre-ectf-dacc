@@ -659,10 +659,7 @@ static void attempt_boot() {
         const uint32_t component_id = flash_status.component_ids[i];
         const i2c_addr_t addr = component_id_to_i2c_addr(component_id);
 
-        if (perform_kex(addr) != error_t::SUCCESS) {
-            print_error("Failed to perform key exchange with component\n");
-            return;
-        } else if (validate_component(addr) != error_t::SUCCESS) {
+        if (validate_component(addr) != error_t::SUCCESS) {
             print_error("Failed to validate component\n");
             return;
         } else if (boot_component(component_id) != error_t::SUCCESS) {
@@ -672,6 +669,16 @@ static void attempt_boot() {
     }
     print_info("AP>%.64s\n", AP_BOOT_MSG);
     print_success("Boot\n");
+
+    for (uint32_t i = 0; i < flash_status.component_cnt; ++i) {
+        const uint32_t component_id = flash_status.component_ids[i];
+        const i2c_addr_t addr = component_id_to_i2c_addr(component_id);
+
+        if (perform_kex(addr) != error_t::SUCCESS) {
+            print_error("Failed to perform key exchange with component\n");
+            return;
+        }
+    }
     boot();
 }
 
