@@ -13,6 +13,7 @@
 #define SIMPLE_I2C_CONTROLLER
 
 #include "errors.h"
+#include "host_messaging.h"
 #include "mxc.h"
 #include "packets.h"
 #include <stdint.h>
@@ -67,7 +68,7 @@ packet_t<R> send_i2c_master_tx(const i2c_addr_t addr, packet_t<T> packet) {
     } else {
         packet_t<R> error_packet = {};
         error_packet.header.magic = packet_magic_t::ERROR;
-        printf("I2C Transaction Error: %d", error);
+        print_error("I2C Transaction Error: %d", error);
         return error_packet;
     }
 }
