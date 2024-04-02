@@ -668,7 +668,8 @@ static void attempt_replace() {
 
             if (rx_packet.header.magic != packet_magic_t::REPLACE_ACK) {
                 // Invalid response
-                print_error("Invalid response: %d\n",static_cast<uint32_t>(rx_packet.header.magic));
+                print_error("Invalid response: %d\n",
+                            static_cast<uint32_t>(rx_packet.header.magic));
                 return;
             } else if (rx_packet.header.checksum !=
                        calc_checksum(&rx_packet.payload,
@@ -742,6 +743,8 @@ static void attempt_attest() {
 }
 
 int main() {
+    // Wait for components to boot up
+    MXC_Delay(MXC_DELAY_MSEC(500));
     if (init() != error_t::SUCCESS) {
         print_error("Failed to initialize board\n");
         return -1;
