@@ -14,7 +14,7 @@
 #include "errors.h"
 #include <stdint.h>
 
-enum class state_t { PREBOOT, POSTBOST };
+enum class bootstate_t { PREBOOT, POSTBOST };
 
 /**
  * @brief Process command sent to the component

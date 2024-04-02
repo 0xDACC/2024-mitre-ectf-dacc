@@ -46,7 +46,7 @@
 #include <string.h>
 #endif
 
-static volatile state_t state = state_t::PREBOOT;
+static volatile bootstate_t boot_state = bootstate_t::PREBOOT;
 
 static uint8_t shared_secret[32] = {};
 static uint8_t private_key[32] = {};
@@ -221,7 +221,7 @@ error_t component_process_cmd(const uint8_t *const data) {
     if (data == nullptr) {
         return error_t::ERROR;
     }
-    if (state == state_t::PREBOOT) {
+    if (boot_state == bootstate_t::PREBOOT) {
         switch (static_cast<packet_magic_t>(data[0])) {
         case packet_magic_t::ATTEST:
             return process_attest(data);
@@ -291,7 +291,7 @@ error_t process_boot(const uint8_t *const data) {
         calc_checksum(&tx_packet.payload, sizeof(tx_packet.payload));
 
     send_packet<packet_type_t::BOOT_ACK>(tx_packet);
-    state = state_t::POSTBOST;
+    boot_state = bootstate_t::POSTBOST;
     return error_t::SUCCESS;
 }
 
@@ -335,27 +335,20 @@ error_t process_replace(const uint8_t *const data) {
     memcpy(&rx_packet.header.checksum, &data[1], 0x04);
     memcpy(&rx_packet.payload, &data[5], sizeof(rx_packet.payload));
 
-    packet_t<packet_type_t::REPLACE_ACK> tx_packet = {};
     const uint32_t expected_checksum =
         calc_checksum(&rx_packet.payload, sizeof(rx_packet.payload));
     if (rx_packet.header.magic != packet_magic_t::REPLACE) {
         // Invalid magic
-        tx_packet.header.magic = packet_magic_t(1);
-        send_packet<packet_type_t::REPLACE_ACK>(tx_packet);
-        return error_t::SUCCESS;
+        return error_t::ERROR;
     } else if (rx_packet.header.checksum != expected_checksum) {
         // Checksum failed
-        tx_packet.header.magic = packet_magic_t(2);
-        send_packet<packet_type_t::REPLACE_ACK>(tx_packet);
-        return error_t::SUCCESS;
+        return error_t::ERROR;
     } else if (rx_packet.payload.len != 0x20) {
         // Invalid payload length
-        tx_packet.header.magic = packet_magic_t(3);
-        send_packet<packet_type_t::REPLACE_ACK>(tx_packet);
-        return error_t::SUCCESS;
+        return error_t::ERROR;
     }
-    
-     tx_packet = {};
+
+    packet_t<packet_type_t::REPLACE_ACK> tx_packet = {};
     tx_packet.header.magic = packet_magic_t::REPLACE_ACK;
     tx_packet.payload.len = 0x40;
 
@@ -516,7 +509,7 @@ int main() {
     LED_On(LED2);
 
     while (true) {
-        if (state == state_t::POSTBOST) {
+        if (boot_state == bootstate_t::POSTBOST) {
             boot();
             return 0;
         }
