@@ -67,7 +67,7 @@ def hash_pin(pin: int, iterations: int) -> bytes:
     """
     hasher = Hash(SHA256(), backend=default_backend())
     for _ in range(iterations):
-        hasher.update(hex(pin)[2::].encode("utf-8"))
+        hasher.update(hex(pin)[2::].zfill(6).encode("utf-8"))
     return hasher.finalize()
 
 
