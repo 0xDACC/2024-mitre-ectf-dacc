@@ -118,7 +118,7 @@ Use standard I2C packet structure
 
 \begin_layout Standard
 \noindent
-\align center
+\align left
 \begin_inset Float table
 placement H
 wide false
@@ -1600,6 +1600,10 @@ Component1 generates a random number and asks AP to sign with key C
 Component1 verifies signature using key C
 \end_layout
 
+\begin_layout Enumerate
+Component1 boots
+\end_layout
+
 \end_deeper
 \begin_layout Enumerate
 AP verifies Component2
@@ -1626,6 +1630,10 @@ Component2 generates a random number and asks AP to sign with key A
 
 \begin_layout Enumerate
 Component2 verifies signature using key A
+\end_layout
+
+\begin_layout Enumerate
+Component2 boots
 \end_layout
 
 \end_deeper
@@ -1656,7 +1664,15 @@ ComponentN generates a random number and asks AP to sign with key A
 ComponentN verifies signature using key A
 \end_layout
 
+\begin_layout Enumerate
+ComponentN boots
+\end_layout
+
 \end_deeper
+\begin_layout Enumerate
+AP Boots
+\end_layout
+
 \begin_layout Paragraph
 
 \emph on
@@ -1975,7 +1991,7 @@ Meets SR1 and SR2
 placement H
 wide false
 sideways false
-status collapsed
+status open
 
 \begin_layout Plain Layout
 \noindent
@@ -2114,7 +2130,7 @@ Signature
 \begin_inset Text
 
 \begin_layout Plain Layout
-(4 bytes)
+(32 bytes)
 \end_layout
 
 \end_inset
@@ -2152,7 +2168,7 @@ Signature
 \begin_inset Text
 
 \begin_layout Plain Layout
-0x04
+0x60
 \end_layout
 
 \end_inset
@@ -2161,7 +2177,7 @@ Signature
 \begin_inset Text
 
 \begin_layout Plain Layout
-0x424F4F54
+
 \end_layout
 
 \end_inset
@@ -2199,7 +2215,7 @@ Component Boot Packet
 placement H
 wide false
 sideways false
-status collapsed
+status open
 
 \begin_layout Plain Layout
 \align center

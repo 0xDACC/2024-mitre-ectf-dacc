@@ -201,6 +201,7 @@ C
 \item Component1 generates a random number and asks AP to sign with key
 C
 \item Component1 verifies signature using key C
+\item Component1 boots
 \end{enumerate}
 \item AP verifies Component2
 \begin{enumerate}
@@ -213,6 +214,7 @@ C
 \item Component2 generates a random number and asks AP to sign with key
 A
 \item Component2 verifies signature using key A
+\item Component2 boots
 \end{enumerate}
 \item AP verifies ComponentN
 \begin{enumerate}
@@ -225,7 +227,9 @@ C
 \item ComponentN generates a random number and asks AP to sign with key
 A
 \item ComponentN verifies signature using key A
+\item ComponentN boots
 \end{enumerate}
+\item AP Boots
 \end{enumerate}
 
 \paragraph{\emph{If any signatures are invalid, stop immediately and shut down.}}
@@ -270,7 +274,6 @@ A
 \item CSUM(Payload) != Expected Checksum
 \item Length != 0x40
 \item ecrecover(signature) != key A or key C
-\item Startup ACK data == 0x00 and recover(signature) == key A or key C
 \end{itemize}
 \textbf{\emph{Shut down immediately, send fail packet if running on
 component, and do not continue operation.}}
@@ -286,9 +289,9 @@ component, and do not continue operation.}}
 \hline 
 Packet Magic & Checksum & Length & Data & Signature\tabularnewline
 \hline 
-(1 byte) & (4 bytes) & (1 byte) & (4 bytes) & (64 bytes)\tabularnewline
+(1 byte) & (4 bytes) & (1 byte) & (32 bytes) & (64 bytes)\tabularnewline
 \hline 
- &  & 0x04 & 0x424F4F54 & \tabularnewline
+ &  & 0x60 &  & \tabularnewline
 \hline 
 \end{tabular}\caption{Component Boot Packet}
 \end{table}
