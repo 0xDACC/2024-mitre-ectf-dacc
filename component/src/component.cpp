@@ -345,12 +345,12 @@ error_t process_replace(const uint8_t *const data) {
         return error_t::SUCCESS;
     } else if (rx_packet.header.checksum != expected_checksum) {
         // Checksum failed
-        tx_packet.header.magic = packet_magic_t(1);
+        tx_packet.header.magic = packet_magic_t(2);
         send_packet<packet_type_t::REPLACE_ACK>(tx_packet);
         return error_t::SUCCESS;
     } else if (rx_packet.payload.len != 0x20) {
         // Invalid payload length
-        tx_packet.header.magic = packet_magic_t(1);
+        tx_packet.header.magic = packet_magic_t(3);
         send_packet<packet_type_t::REPLACE_ACK>(tx_packet);
         return error_t::SUCCESS;
     }
