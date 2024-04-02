@@ -675,7 +675,7 @@ static void attempt_boot() {
 }
 
 static void attempt_replace() {
-    char buf[9] = {};
+    char buf[11] = {};
 
     if (validate_token() != error_t::SUCCESS) {
         return;
@@ -688,6 +688,8 @@ static void attempt_replace() {
     sscanf(buf, "%lx", &component_id_in);
     recv_input("Component ID Out: ", buf, sizeof(buf));
     sscanf(buf, "%lx", &component_id_out);
+
+    const i2c_addr_t addr_in = component_id_to_i2c_addr(component_id_in);
 
     // Find the component to swap out
     for (uint32_t i = 0; i < flash_status.component_cnt; ++i) {
@@ -712,8 +714,8 @@ static void attempt_replace() {
 
             const packet_t<packet_type_t::REPLACE_ACK> rx_packet =
                 send_i2c_master_tx<packet_type_t::REPLACE_ACK,
-                                   packet_type_t::REPLACE_COMMAND>(
-                    component_id_in, tx_packet);
+                                   packet_type_t::REPLACE_COMMAND>(addr_in,
+                                                                   tx_packet);
 
             if (rx_packet.header.magic != packet_magic_t::REPLACE_ACK) {
                 // Invalid response
