@@ -750,7 +750,7 @@ static void attempt_replace() {
 }
 
 static void attempt_attest() {
-    char buf[5] = {};
+    char buf[11] = {};
     uint8_t pin[7] = {};
     uint8_t unwrapped_key[16] = {};
     uint8_t wrapper_iv[16] = {};
