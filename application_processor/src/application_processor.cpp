@@ -668,8 +668,7 @@ static void attempt_replace() {
 
             if (rx_packet.header.magic != packet_magic_t::REPLACE_ACK) {
                 // Invalid response
-                print_error("Invalid response: %d",
-                            +static_cast<uint32_t>(rx_packet.header.magic));
+                print_error("Invalid response\n");
                 return;
             } else if (rx_packet.header.checksum !=
                        calc_checksum(&rx_packet.payload,

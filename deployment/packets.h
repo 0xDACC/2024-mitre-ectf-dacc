@@ -115,7 +115,7 @@ template<> struct __packed payload_t<packet_type_t::ATTEST_ACK> {
 };
 
 /**
- * @brief Boot signature request command packet payload
+ * @brief Boot command packet payload
  *
  */
 template<> struct __packed payload_t<packet_type_t::BOOT_COMMAND> {
@@ -125,7 +125,7 @@ template<> struct __packed payload_t<packet_type_t::BOOT_COMMAND> {
 };
 
 /**
- * @brief Boot signature request ack packet payload
+ * @brief Boot command ack packet payload
  * @note The signature is calculated over the AP's data, not the COMP's data
  *
  */
