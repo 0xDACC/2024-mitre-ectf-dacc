@@ -671,23 +671,23 @@ static void attempt_replace() {
 
             if (rx_packet.header.magic != packet_magic_t::REPLACE_ACK) {
                 // Invalid response
-                print_error("Could not replace component\n");
+                print_error("Invalid response\n");
                 return;
             } else if (rx_packet.header.checksum !=
                        calc_checksum(&rx_packet.payload,
                                      sizeof(rx_packet.payload))) {
                 // Invalid checksum
-                print_error("Could not replace component\n");
+                print_error("Invalid checksum\n");
                 return;
             } else if (rx_packet.payload.len != 0x40) {
                 // Invalid payload length
-                print_error("Could not replace component\n");
+                print_error("Invalid payload length\n");
                 return;
             } else if (uECC_verify(REPLACEMENT_PUB, random, 32,
                                    rx_packet.payload.data,
                                    uECC_secp256r1()) != 1) {
                 // Invalid signature
-                print_error("Could not replace component\n");
+                print_error("Invalid signature\n");
                 return;
             }
 
