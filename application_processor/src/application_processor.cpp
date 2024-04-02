@@ -743,8 +743,6 @@ static void attempt_attest() {
 }
 
 int main() {
-    // Wait for components to boot up
-    MXC_Delay(MXC_DELAY_MSEC(500));
     if (init() != error_t::SUCCESS) {
         print_error("Failed to initialize board\n");
         return -1;
