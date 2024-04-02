@@ -130,7 +130,7 @@ def parse_ap_params() -> tuple[int, int, list[str], str]:
     return attest_pin, replacement_token, component_ids, boot_msg
 
 
-ITERATIONS: int = 10000
+ITERATIONS: int = 1000
 attest_pin, replacement_token, component_ids, boot_msg = parse_ap_params()
 attest_pin_hash = hash_pin(attest_pin, ITERATIONS)
 write("uint8_t[]", "ATTEST_HASH", [f"{b}" for b in attest_pin_hash])
