@@ -76,7 +76,10 @@ void i2c_simple_isr() {
             // Clear the TX FIFO if anything is left
             MXC_I2C_ClearTXFIFO(MXC_I2C1);
         }
-
+        if (txcnt > 0) {
+            // Clear the RX and TX buffers if the transaction is complete
+            clear();
+        }
         // Reset state
         txcnt = 0;
         rxcnt = 0;
