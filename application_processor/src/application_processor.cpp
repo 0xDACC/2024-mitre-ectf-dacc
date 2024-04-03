@@ -12,22 +12,16 @@
 #define AP 1
 
 #include "board.h"
-#include "i2c.h"
-#include "icc.h"
-#include "led.h"
-
-#include <stdint.h>
-#include <string.h>
-
 #include "crc32.h"
 #include "errors.h"
 #include "host_messaging.h"
+#include "i2c.h"
+#include "icc.h"
+#include "led.h"
 #include "packets.h"
 #include "random.h"
 #include "simple_flash.h"
 #include "simple_i2c_controller.h"
-#include "utils.h"
-
 #include "tinycrypt/aes.h"
 #include "tinycrypt/ctr_mode.h"
 #include "tinycrypt/ecc.h"
@@ -35,12 +29,17 @@
 #include "tinycrypt/ecc_dsa.h"
 #include "tinycrypt/hmac.h"
 #include "tinycrypt/sha256.h"
+#include "utils.h"
+
+#include <stdint.h>
+#include <string.h>
 
 #ifdef POST_BOOT
-#include "mxc_delay.h"
-#include <stdint.h>
-#include <stdio.h>
-#include <string.h>
+    #include "mxc_delay.h"
+
+    #include <stdint.h>
+    #include <stdio.h>
+    #include <string.h>
 #endif
 
 // Includes from containerized build
@@ -300,7 +299,6 @@ static int get_provisioned_ids(uint32_t *const buffer) {
 }
 
 static error_t init() {
-
     // Enable global interrupts
     __enable_irq();
 
@@ -333,9 +331,7 @@ static error_t list_components() {
     }
 
     for (i2c_addr_t addr = 0x08; addr < 0x78; ++addr) {
-        if (addr == 0x18 || addr == 0x28 || addr == 0x36) {
-            continue;
-        }
+        if (addr == 0x18 || addr == 0x28 || addr == 0x36) { continue; }
 
         packet_t<packet_type_t::LIST_COMMAND> tx_packet = {};
         tx_packet.header.magic = packet_magic_t::LIST;
@@ -348,9 +344,7 @@ static error_t list_components() {
             send_i2c_master_tx<packet_type_t::LIST_ACK,
                                packet_type_t::LIST_COMMAND>(addr, tx_packet);
 
-        if (rx_packet.header.magic == packet_magic_t::ERROR) {
-            continue;
-        }
+        if (rx_packet.header.magic == packet_magic_t::ERROR) { continue; }
 
         const uint32_t expected_checksum =
             calc_checksum(&rx_packet.payload, sizeof(rx_packet.payload));
@@ -464,9 +458,7 @@ static error_t attest_component(const uint32_t component_id,
             send_i2c_master_tx<packet_type_t::ATTEST_ACK,
                                packet_type_t::ATTEST_COMMAND>(addr, tx_packet);
 
-        if (rx_packet.header.magic == packet_magic_t::ERROR) {
-            continue;
-        }
+        if (rx_packet.header.magic == packet_magic_t::ERROR) { continue; }
 
         const uint32_t expected_checksum =
             calc_checksum(&rx_packet.payload, sizeof(rx_packet.payload));
@@ -491,9 +483,7 @@ static error_t attest_component(const uint32_t component_id,
             return error_t::ERROR;
         }
 
-        if (i == 0) {
-            print_info("C>0x%08lx\n", component_id);
-        }
+        if (i == 0) { print_info("C>0x%08lx\n", component_id); }
 
         tc_ctr_mode(out, 0x40, rx_packet.payload.data, 0x40, ctr, &aes_key);
         print_info("%s>%.64s\n", fmts[i], out);
@@ -510,9 +500,7 @@ static error_t perform_kex(const uint32_t component_id) {
     const uint8_t index = addr_to_idx(component_id);
     const i2c_addr_t addr = component_id_to_i2c_addr(component_id);
 
-    if (index == 0xFF) {
-        return error_t::ERROR;
-    }
+    if (index == 0xFF) { return error_t::ERROR; }
 
     uECC_make_key(public_keys[index], private_keys[index], uECC_secp256r1());
     memcpy(tx_packet.payload.material, public_keys[index], 0x40);
@@ -567,7 +555,6 @@ static error_t perform_kex(const uint32_t component_id) {
 // YOUR DESIGN MUST NOT CHANGE THIS FUNCTION
 // Boot message is customized through the AP_BOOT_MSG macro
 void boot() {
-
 // POST BOOT FUNCTIONALITY
 // DO NOT REMOVE IN YOUR DESIGN
 #ifdef POST_BOOT
@@ -631,9 +618,7 @@ static void attempt_boot() {
 static void attempt_replace() {
     char buf[11] = {};
 
-    if (validate_token() != error_t::SUCCESS) {
-        return;
-    }
+    if (validate_token() != error_t::SUCCESS) { return; }
 
     uint32_t component_id_in = 0;
     uint32_t component_id_out = 0;

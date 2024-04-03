@@ -11,11 +11,10 @@
 
 #include "simple_flash.h"
 
+#include "errors.h"
 #include "flc.h"
 #include "icc.h"
 #include "nvic_table.h"
-
-#include "errors.h"
 
 static void FLC0_IRQHandler() {
     const uint32_t temp = MXC_FLC0->intr;

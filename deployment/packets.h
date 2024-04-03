@@ -18,17 +18,17 @@
  *
  */
 enum class packet_magic_t : uint8_t {
-	ERROR,
-	KEX,
-	LIST,
-	LIST_ACK,
-	ATTEST,
-	ATTEST_ACK,
-	BOOT,
-	BOOT_ACK,
-	DECRYPTED,
-	ENCRYPTED,
-	ENCRYPTED_REQ
+    ERROR,
+    KEX,
+    LIST,
+    LIST_ACK,
+    ATTEST,
+    ATTEST_ACK,
+    BOOT,
+    BOOT_ACK,
+    DECRYPTED,
+    ENCRYPTED,
+    ENCRYPTED_REQ
 };
 
 /**
@@ -36,16 +36,16 @@ enum class packet_magic_t : uint8_t {
  *
  */
 enum class packet_type_t : uint8_t {
-	ERROR,
-	KEX,
-	LIST_COMMAND,
-	LIST_ACK,
-	ATTEST_COMMAND,
-	ATTEST_ACK,
-	BOOT_COMMAND,
-	BOOT_ACK,
-	SECURE,
-	SECURE_REQ
+    ERROR,
+    KEX,
+    LIST_COMMAND,
+    LIST_ACK,
+    ATTEST_COMMAND,
+    ATTEST_ACK,
+    BOOT_COMMAND,
+    BOOT_ACK,
+    SECURE,
+    SECURE_REQ
 };
 
 /**
@@ -53,8 +53,8 @@ enum class packet_type_t : uint8_t {
  *
  */
 struct header_t {
-	packet_magic_t magic;
-	uint32_t checksum;
+    packet_magic_t magic;
+    uint32_t checksum;
 };
 
 template<packet_type_t T> struct __packed payload_t;
@@ -70,8 +70,8 @@ template<> struct __packed payload_t<packet_type_t::ERROR> {};
  *
  */
 template<> struct __packed payload_t<packet_type_t::KEX> {
-	uint8_t len;
-	uint8_t material[64];
+    uint8_t len;
+    uint8_t material[64];
 };
 
 /**
@@ -79,7 +79,7 @@ template<> struct __packed payload_t<packet_type_t::KEX> {
  *
  */
 template<> struct __packed payload_t<packet_type_t::LIST_COMMAND> {
-	uint8_t len;
+    uint8_t len;
 };
 
 /**
@@ -87,8 +87,8 @@ template<> struct __packed payload_t<packet_type_t::LIST_COMMAND> {
  *
  */
 template<> struct __packed payload_t<packet_type_t::LIST_ACK> {
-	uint8_t len;
-	uint8_t data[4];
+    uint8_t len;
+    uint8_t data[4];
 };
 
 /**
@@ -96,9 +96,9 @@ template<> struct __packed payload_t<packet_type_t::LIST_ACK> {
  *
  */
 template<> struct __packed payload_t<packet_type_t::ATTEST_COMMAND> {
-	uint8_t len;
-	uint8_t data[7];
-	uint8_t sig[64];
+    uint8_t len;
+    uint8_t data[7];
+    uint8_t sig[64];
 };
 
 /**
@@ -106,9 +106,9 @@ template<> struct __packed payload_t<packet_type_t::ATTEST_COMMAND> {
  *
  */
 template<> struct __packed payload_t<packet_type_t::ATTEST_ACK> {
-	uint8_t len;
-	uint8_t data[64];
-	uint8_t sig[64];
+    uint8_t len;
+    uint8_t data[64];
+    uint8_t sig[64];
 };
 
 /**
@@ -116,9 +116,9 @@ template<> struct __packed payload_t<packet_type_t::ATTEST_ACK> {
  *
  */
 template<> struct __packed payload_t<packet_type_t::BOOT_COMMAND> {
-	uint8_t len;
-	uint8_t data[32];
-	uint8_t sig[64];
+    uint8_t len;
+    uint8_t data[32];
+    uint8_t sig[64];
 };
 
 /**
@@ -127,9 +127,9 @@ template<> struct __packed payload_t<packet_type_t::BOOT_COMMAND> {
  *
  */
 template<> struct __packed payload_t<packet_type_t::BOOT_ACK> {
-	uint8_t len;
-	uint8_t data[64];
-	uint8_t sig[64];
+    uint8_t len;
+    uint8_t data[64];
+    uint8_t sig[64];
 };
 
 /**
@@ -137,12 +137,12 @@ template<> struct __packed payload_t<packet_type_t::BOOT_ACK> {
  *
  */
 template<> struct __packed payload_t<packet_type_t::SECURE> {
-	uint8_t magic;
-	uint8_t len;
-	uint32_t nonce;
-	uint8_t data[64];
-	uint8_t __padding[10];	// Pad to multiple of 16 bytes
-	uint8_t hmac[32];
+    uint8_t magic;
+    uint8_t len;
+    uint32_t nonce;
+    uint8_t data[64];
+    uint8_t __padding[10];  // Pad to multiple of 16 bytes
+    uint8_t hmac[32];
 };
 
 /**
@@ -150,12 +150,12 @@ template<> struct __packed payload_t<packet_type_t::SECURE> {
  *
  */
 template<> struct __packed payload_t<packet_type_t::SECURE_REQ> {
-	uint8_t magic;
-	uint8_t len;
-	uint32_t nonce;
-	uint8_t data[64];
-	uint8_t __padding[10];	// Pad to multiple of 16 bytes
-	uint8_t hmac[32];
+    uint8_t magic;
+    uint8_t len;
+    uint32_t nonce;
+    uint8_t data[64];
+    uint8_t __padding[10];  // Pad to multiple of 16 bytes
+    uint8_t hmac[32];
 };
 
 /**
@@ -164,8 +164,8 @@ template<> struct __packed payload_t<packet_type_t::SECURE_REQ> {
  * @tparam T Payload type
  */
 template<packet_type_t T> struct packet_t {
-	header_t header;
-	payload_t<T> payload;
+    header_t header;
+    payload_t<T> payload;
 };
 
 #endif
