@@ -56,6 +56,10 @@ static uint8_t ctr[16] = {};
 using namespace i2c;
 
 void secure_send(const uint8_t *const buffer, const uint8_t len) {
+    // Wait for AP to send request
+    while (rxbuf[0] != static_cast<uint8_t>(packet_magic_t::ENCRYPTED)) {
+        continue;
+    }
     uint8_t payload[sizeof(payload_t<packet_type_t::SECURE>)] = {};
     uint8_t hash[32] = {};
     tc_aes_key_sched_struct aes_key = {};
@@ -71,6 +75,7 @@ void secure_send(const uint8_t *const buffer, const uint8_t len) {
     payload[1] = len;
     memcpy(&payload[2], &nonce, 0x04);
     memcpy(&payload[6], buffer, len);
+
     tc_hmac_init(&hmac_ctx);
     tc_hmac_set_key(&hmac_ctx, HMAC_KEY, 32);
     tc_hmac_update(&hmac_ctx, &payload[0], sizeof(payload) - 32);

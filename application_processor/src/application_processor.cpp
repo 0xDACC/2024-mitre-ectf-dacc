@@ -69,9 +69,9 @@ static uint8_t public_keys[COMPONENT_CNT][64] = {};
 static uint32_t nonces[COMPONENT_CNT] = {};
 static uint8_t ctrs[COMPONENT_CNT][16] = {};
 
-static inline uint8_t cid_to_idx(const i2c_addr_t id) {
+static inline uint8_t addr_to_idx(const i2c_addr_t addr) {
     for (uint8_t i = 0; i < COMPONENT_CNT; ++i) {
-        if (component_id_to_i2c_addr(flash_status.component_ids[i]) == id) {
+        if (component_id_to_i2c_addr(flash_status.component_ids[i]) == addr) {
             return i;
         }
     }
@@ -93,7 +93,7 @@ static inline uint8_t cid_to_idx(const i2c_addr_t id) {
 */
 static int secure_send(const uint8_t address, const uint8_t *const buffer,
                        const uint8_t len) {
-    const uint8_t index = cid_to_idx(address);
+    const uint8_t index = addr_to_idx(address);
 
     uint8_t payload[sizeof(payload_t<packet_type_t::SECURE>)] = {};
     uint8_t hash[32] = {};
@@ -163,7 +163,7 @@ static int secure_send(const uint8_t address, const uint8_t *const buffer,
  * the security requirements.
  */
 static int secure_receive(const i2c_addr_t address, uint8_t *const buffer) {
-    const uint8_t index = cid_to_idx(address);
+    const uint8_t index = addr_to_idx(address);
 
     uint8_t payload[sizeof(payload_t<packet_type_t::SECURE>)] = {};
     uint8_t hash[32] = {};
@@ -488,7 +488,7 @@ static error_t perform_kex(const uint32_t component_id) {
     tx_packet.header.magic = packet_magic_t::KEX;
     tx_packet.payload.len = 0x40;
 
-    const uint8_t index = cid_to_idx(component_id);
+    const uint8_t index = addr_to_idx(component_id);
     const i2c_addr_t addr = component_id_to_i2c_addr(component_id);
 
     if (index == 0xFF) {
