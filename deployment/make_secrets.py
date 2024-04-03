@@ -71,7 +71,6 @@ def write(type: str, name: str, values: list[str], ap: bool, comp: bool) -> None
 
 keypair_A_priv, keypair_A_pub = gen_keypair()
 keypair_C_priv, keypair_C_pub = gen_keypair()
-replacement_priv, replacement_pub = gen_keypair()
 attest_A_priv, attest_A_pub = gen_keypair()
 attest_C_priv, attest_C_pub = gen_keypair()
 
@@ -83,8 +82,6 @@ write("uint8_t[]", "BOOT_A_PUB", [f"{b}" for b in keypair_A_pub], False, True)
 write("uint8_t[]", "BOOT_A_PRIV", [f"{b}" for b in keypair_A_priv], True, False)
 write("uint8_t[]", "BOOT_C_PUB", [f"{b}" for b in keypair_C_pub], True, False)
 write("uint8_t[]", "BOOT_C_PRIV", [f"{b}" for b in keypair_C_priv], False, True)
-write("uint8_t[]", "REPLACEMENT_PUB", [f"{b}" for b in replacement_pub], True, False)
-write("uint8_t[]", "REPLACEMENT_PRIV", [f"{b}" for b in replacement_priv], False, True)
 write("uint8_t[]", "ATTEST_A_PUB", [f"{b}" for b in attest_A_pub], False, True)
 write("uint8_t[]", "ATTEST_A_PRIV", [f"{b}" for b in attest_A_priv], True, False)
 write("uint8_t[]", "ATTEST_C_PUB", [f"{b}" for b in attest_C_pub], True, False)
@@ -103,7 +100,5 @@ keypair_A_pub = keypair_A_pub.hex()
 
 keypair_C_priv = keypair_C_priv.hex()
 keypair_C_pub = keypair_C_pub.hex()
-
-# write("uint8_t[]", "REPLACEMENT_PUB", [f"{b}" for b in attest_key])
 
 output.close()
