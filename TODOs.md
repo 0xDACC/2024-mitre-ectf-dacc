@@ -12,7 +12,7 @@
 - [ ] Verify functionality on testing service
   - [X] List
   - [X] Attest
-  - [] Replace
+  - [X] Replace
   - [X] Boot
   - [] Secure S&R
 
