@@ -252,6 +252,7 @@ static int secure_receive(const i2c_addr_t address, uint8_t *const buffer) {
     }
     ++nonces[index];
     memcpy(buffer, &payload[6], payload[1]);
+    print_hex(buffer, payload[1]);
     return payload[1];
 }
 

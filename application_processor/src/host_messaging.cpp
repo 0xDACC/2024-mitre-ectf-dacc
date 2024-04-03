@@ -42,6 +42,9 @@ void recv_input(const char *const msg, uint8_t *const buf,
 void print_hex(const uint8_t *const buf, const size_t len) {
     for (size_t i = 0; i < len; ++i) {
         printf("%02x", buf[i]);
+        if (i % 16 == 15) {
+            printf("\n");
+        }
     }
     printf("\n");
 }
