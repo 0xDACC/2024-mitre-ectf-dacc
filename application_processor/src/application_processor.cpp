@@ -103,6 +103,7 @@ static int secure_send(const uint8_t address, const uint8_t *const buffer,
     uint8_t hmac[32] = {};
 
     if (index == 0xFF) {
+        print_error("Error :(\n");
         return -1;
     }
 
@@ -133,7 +134,7 @@ static int secure_send(const uint8_t address, const uint8_t *const buffer,
             address, tx_packet);
 
     if (rx_packet.header.magic == packet_magic_t::ERROR) {
-        print_error("Error :(\n");
+        print_error("I2C Error :(\n");
         return -1;
     }
 

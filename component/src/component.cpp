@@ -65,10 +65,6 @@ void secure_send(const uint8_t *const buffer, const uint8_t len) {
     uint8_t hmac[32] = {};
 
     // Wait for AP to send request
-    while (rxbuf[0] != static_cast<uint8_t>(packet_magic_t::ENCRYPTED)) {
-        continue;
-    }
-
     packet_t<packet_type_t::SECURE> rx_packet = {};
     rx_packet.header.magic = static_cast<packet_magic_t>(rxbuf[0]);
 
