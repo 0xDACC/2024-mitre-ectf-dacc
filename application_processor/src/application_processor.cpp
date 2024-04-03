@@ -175,7 +175,6 @@ static int secure_receive(const i2c_addr_t address, uint8_t *const buffer) {
 
     if (index == 0xFF) {
         print_error("Error :(\n");
-        print_error("Error :(\n");
         return -1;
     }
 
@@ -249,16 +248,13 @@ static int secure_receive(const i2c_addr_t address, uint8_t *const buffer) {
     if (payload[0] != static_cast<uint8_t>(packet_magic_t::DECRYPTED)) {
         // Invalid payload
         print_error("Invalid payload\n");
-        print_error("Invalid payload\n");
         return -1;
     } else if (memcmp(&payload[2], &nonces[index], 0x04) != 0) {
         // Invalid nonce
         print_error("Invalid nonce\n");
-        print_error("Invalid nonce\n");
         return -1;
     } else if (memcmp(hmac, &payload[sizeof(payload) - 32], 32) != 0) {
         // HMAC failed
-        print_error("HMAC failed\n");
         print_error("HMAC failed\n");
         return -1;
     }

@@ -139,6 +139,7 @@ template<> struct __packed payload_t<packet_type_t::SECURE> {
 	uint8_t len;
 	uint32_t nonce;
 	uint8_t data[64];
+	uint8_t __padding[10];	// Pad to multiple of 16 bytes
 	uint8_t hmac[32];
 };
 
