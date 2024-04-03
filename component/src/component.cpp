@@ -93,6 +93,7 @@ void secure_send(const uint8_t *const buffer, const uint8_t len) {
     tx_packet.header.checksum =
         calc_checksum(&tx_packet.payload, sizeof(tx_packet.payload));
 
+    ++nonce;
     send_packet<packet_type_t::SECURE>(tx_packet);
 }
 
@@ -188,6 +189,7 @@ int secure_receive(uint8_t *const buffer) {
     tx_packet.header.checksum =
         calc_checksum(&tx_packet.payload, sizeof(tx_packet.payload));
 
+    ++nonce;
     send_packet<packet_type_t::SECURE>(tx_packet);
     return payload[1];
 }

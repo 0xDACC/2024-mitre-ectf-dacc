@@ -145,6 +145,7 @@ static int secure_send(const uint8_t address, const uint8_t *const buffer,
     } else if (rx_packet.header.magic == packet_magic_t::ERROR) {
         return -1;
     } else {
+        ++nonces[index];
         return 0;
     }
 }
@@ -249,6 +250,7 @@ static int secure_receive(const i2c_addr_t address, uint8_t *const buffer) {
         // HMAC failed
         return -1;
     }
+    ++nonces[index];
     memcpy(buffer, &payload[6], payload[1]);
     return payload[1];
 }
