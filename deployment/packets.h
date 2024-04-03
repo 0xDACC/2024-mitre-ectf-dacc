@@ -70,7 +70,6 @@ template<> struct __packed payload_t<packet_type_t::ERROR> {};
 template<> struct __packed payload_t<packet_type_t::KEX> {
 	uint8_t len;
 	uint8_t material[64];
-	uint8_t hash[32];
 };
 
 /**

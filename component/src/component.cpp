@@ -399,13 +399,6 @@ error_t process_kex(const uint8_t *const data) {
 
     const uint32_t expected_checksum =
         calc_checksum(&rx_packet.payload, sizeof(rx_packet.payload));
-    tc_sha256_state_struct sha256_ctx = {};
-
-    uint8_t expected_hash[32] = {};
-    tc_sha256_init(&sha256_ctx);
-    tc_sha256_update(&sha256_ctx, rx_packet.payload.material,
-                     sizeof(rx_packet.payload.material));
-    tc_sha256_final(expected_hash, &sha256_ctx);
 
     if (rx_packet.header.checksum != expected_checksum) {
         // Checksum failed
@@ -417,30 +410,15 @@ error_t process_kex(const uint8_t *const data) {
                                      uECC_secp256r1()) < 0) {
         // Invalid public key
         return error_t::ERROR;
-    } else if (memcmp(rx_packet.payload.hash, expected_hash, 0x20) != 0) {
-        // Invalid hash
-        return error_t::ERROR;
-    } else if (uECC_valid_public_key(rx_packet.payload.material,
-                                     uECC_secp256r1()) != 0) {
-        // Invalid public key
-        return error_t::ERROR;
     }
 
-    uECC_make_key(public_key, private_key, uECC_secp256r1());
     uECC_shared_secret(rx_packet.payload.material, private_key, shared_secret,
                        uECC_secp256r1());
 
     packet_t<packet_type_t::KEX> tx_packet;
     tx_packet.header.magic = packet_magic_t::KEX;
     tx_packet.payload.len = 0x40;
-    uECC_compute_public_key(private_key, tx_packet.payload.material,
-                            uECC_secp256r1());
-
-    sha256_ctx = {};
-    tc_sha256_init(&sha256_ctx);
-    tc_sha256_update(&sha256_ctx, tx_packet.payload.material,
-                     sizeof(tx_packet.payload.material));
-    tc_sha256_final(tx_packet.payload.hash, &sha256_ctx);
+    memcpy(tx_packet.payload.material, public_key, 0x40);
 
     tx_packet.header.checksum =
         calc_checksum(&tx_packet.payload, sizeof(tx_packet.payload));
@@ -449,8 +427,6 @@ error_t process_kex(const uint8_t *const data) {
 }
 
 int main() {
-    printf("Component Started\n");
-
     // Enable Global Interrupts
     __enable_irq();
 
@@ -458,13 +434,13 @@ int main() {
     i2c_addr_t addr = component_id_to_i2c_addr(COMPONENT_ID);
     if (i2c_simple_peripheral_init(addr, component_process_cmd) !=
         error_t::SUCCESS) {
-        printf("Failed to initialize I2C peripheral.\n");
         return -1;
     }
     if (random_init() != error_t::SUCCESS) {
-        printf("Failed to initialize random number generator.\n");
         return -1;
     }
+
+    uECC_make_key(public_key, private_key, uECC_secp256r1());
 
     LED_On(LED2);
 

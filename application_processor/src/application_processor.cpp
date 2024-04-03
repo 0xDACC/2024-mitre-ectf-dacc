@@ -281,8 +281,6 @@ static error_t init() {
     flash_simple_read(FLASH_ADDR, &flash_status, sizeof(flash_entry_t));
 
     if (flash_status.flash_magic != FLASH_MAGIC) {
-        print_debug("First boot, setting flash!\n");
-
         flash_status.flash_magic = FLASH_MAGIC;
         flash_status.component_cnt = COMPONENT_CNT;
         memcpy(flash_status.component_ids, COMPONENT_IDS,
@@ -290,13 +288,11 @@ static error_t init() {
 
         if (flash_simple_write(FLASH_ADDR, &flash_status,
                                sizeof(flash_entry_t)) != error_t::SUCCESS) {
-            print_error("Failed to write to flash\n");
             return error_t::ERROR;
         }
     }
 
     if (i2c_simple_controller_init() != error_t::SUCCESS) {
-        print_error("Failed to initialize I2C\n");
         return error_t::ERROR;
     }
     return error_t::SUCCESS;
@@ -361,7 +357,6 @@ static error_t boot_component(const uint32_t component_id) {
 
     if (uECC_sign(BOOT_A_PRIV, tx_packet.payload.data, 0x20,
                   tx_packet.payload.sig, uECC_secp256r1()) != 1) {
-        print_error("Could not boot component\n");
         return error_t::ERROR;
     }
 
@@ -385,20 +380,16 @@ static error_t boot_component(const uint32_t component_id) {
         calc_checksum(&rx_packet.payload, sizeof(rx_packet.payload));
     if (rx_packet.header.magic != packet_magic_t::BOOT_ACK) {
         // Invalid response
-        print_error("Could not boot component\n");
         return error_t::ERROR;
     } else if (rx_packet.header.checksum != expected_checksum) {
         // Invalid checksum
-        print_error("Could not boot component\n");
         return error_t::ERROR;
     } else if (rx_packet.payload.len != 0x40) {
         // Invalid payload length
-        print_error("Could not boot component\n");
         return error_t::ERROR;
     } else if (uECC_verify(BOOT_C_PUB, tx_packet.payload.data, 0x20,
                            rx_packet.payload.sig, uECC_secp256r1()) != 1) {
         // Invalid signature
-        print_error("Could not boot component\n");
         return error_t::ERROR;
     }
 
@@ -434,7 +425,6 @@ static error_t attest_component(const uint32_t component_id,
 
         if (uECC_sign(ATTEST_A_PRIV, hash, 32, tx_packet.payload.sig,
                       uECC_secp256r1()) != 1) {
-            print_error("Could not attest component\n");
             return error_t::ERROR;
         }
 
@@ -459,20 +449,16 @@ static error_t attest_component(const uint32_t component_id,
 
         if (rx_packet.header.magic != packet_magic_t::ATTEST_ACK) {
             // Invalid response
-            print_error("Invalid response\n");
             return error_t::ERROR;
         } else if (rx_packet.header.checksum != expected_checksum) {
             // Invalid checksum
-            print_error("Invalid checksum\n");
             return error_t::ERROR;
         } else if (rx_packet.payload.len != 0x40) {
             // Invalid payload length
-            print_error("Invalid payload length\n");
             return error_t::ERROR;
         } else if (uECC_verify(ATTEST_C_PUB, hash, 32, rx_packet.payload.sig,
                                uECC_secp256r1()) != 1) {
             // Invalid signature
-            print_error("Invalid signature\n");
             return error_t::ERROR;
         }
 
@@ -496,20 +482,11 @@ static error_t perform_kex(const uint32_t component_id) {
     const i2c_addr_t addr = component_id_to_i2c_addr(component_id);
 
     if (index == 0xFF) {
-        print_error("Invalid component\n");
         return error_t::ERROR;
     }
 
     uECC_make_key(public_keys[index], private_keys[index], uECC_secp256r1());
-
-    uint8_t hash[32] = {};
-    tc_sha256_state_struct sha256_ctx = {};
-    tc_sha256_init(&sha256_ctx);
-    tc_sha256_update(&sha256_ctx, public_keys[index], 0x40);
-    tc_sha256_final(hash, &sha256_ctx);
-
     memcpy(tx_packet.payload.material, public_keys[index], 0x40);
-    memcpy(tx_packet.payload.hash, hash, 0x20);
 
     tx_packet.header.checksum =
         calc_checksum(&tx_packet.payload, sizeof(tx_packet.payload));
@@ -525,31 +502,24 @@ static error_t perform_kex(const uint32_t component_id) {
     const uint32_t expected_checksum =
         calc_checksum(&rx_packet.payload, sizeof(rx_packet.payload));
 
-    sha256_ctx = {};
+    tc_sha256_state_struct sha256_ctx = {};
+    uint8_t hash[32] = {};
     tc_sha256_init(&sha256_ctx);
     tc_sha256_update(&sha256_ctx, rx_packet.payload.material, 0x40);
     tc_sha256_final(hash, &sha256_ctx);
 
     if (rx_packet.header.magic != packet_magic_t::KEX) {
         // Invalid response
-        print_error("Invalid response\n");
         return error_t::ERROR;
     } else if (rx_packet.header.checksum != expected_checksum) {
         // Invalid checksum
-        print_error("Invalid checksum\n");
-        return error_t::ERROR;
-    } else if (memcmp(rx_packet.payload.hash, hash, 0x20) != 0) {
-        // Invalid hash
-        print_error("Invalid hash\n");
         return error_t::ERROR;
     } else if (rx_packet.payload.len != 0x40) {
         // Invalid payload
-        print_error("Invalid payload\n");
         return error_t::ERROR;
     } else if (uECC_valid_public_key(rx_packet.payload.material,
                                      uECC_secp256r1()) != 0) {
         // Invalid public key
-        print_error("Invalid public key\n");
         return error_t::ERROR;
     }
     uECC_shared_secret(rx_packet.payload.material, private_keys[index],
@@ -597,24 +567,22 @@ static error_t validate_token() {
     tc_sha256_final(hash, &sha256_ctx);
 
     if (memcmp(hash, REPLACEMENT_HASH, 32) == 0) {
-        print_debug("Token Accepted!\n");
         return error_t::SUCCESS;
+    } else {
+        return error_t::ERROR;
     }
-    print_error("Invalid Token!\n");
-    return error_t::ERROR;
 }
 
 static void attempt_boot() {
     for (uint32_t i = 0; i < flash_status.component_cnt; ++i) {
         const uint32_t component_id = flash_status.component_ids[i];
 
-        if (perform_kex(component_id) != error_t::SUCCESS) {
-            print_error("Failed to perform key exchange with component\n");
+        if (perform_kex(flash_status.component_ids[i]) != error_t::SUCCESS) {
+            print_error("Error :(\n");
             return;
         }
-
         if (boot_component(component_id) != error_t::SUCCESS) {
-            print_error("Failed to boot component\n");
+            print_error("Error :(\n");
             return;
         }
     }
@@ -649,12 +617,11 @@ static void attempt_replace() {
             flash_simple_write(FLASH_ADDR, &flash_status,
                                sizeof(flash_entry_t));
 
-            print_debug("Replaced 0x%08lx with 0x%08lx\n", component_id_out,
-                        component_id_in);
             print_success("Replace\n");
             return;
         }
     }
+    print_error("Error :(\n");
 }
 
 static void attempt_attest() {
@@ -673,10 +640,8 @@ static void attempt_attest() {
     }
     tc_sha256_final(hash, &sha256_ctx);
 
-    if (memcmp(hash, ATTEST_HASH, 32) == 0) {
-        print_debug("Pin Accepted!\n");
-    } else {
-        print_error("Invalid PIN!\n");
+    if (memcmp(hash, ATTEST_HASH, 32) != 0) {
+        print_error("Error :(\n");
         return;
     }
 
@@ -695,16 +660,16 @@ static void attempt_attest() {
     sscanf(buf, "%lx", &component_id);
     if (attest_component(component_id, unwrapped_key) == error_t::SUCCESS) {
         print_success("Attest\n");
+    } else {
+        print_error("Error :(\n");
     }
 }
 
 int main() {
     if (init() != error_t::SUCCESS) {
-        print_error("Failed to initialize board\n");
+        print_error("Error :(\n");
         return -1;
     }
-
-    print_info("Application Processor Started\n");
 
     LED_On(LED3);
 
@@ -723,7 +688,7 @@ int main() {
         } else if (strcmp(buf, "attest") == 0) {
             attempt_attest();
         } else {
-            print_error("Unrecognized command '%.8s'\n", buf);
+            print_error("Error :(\n");
         }
     }
 
