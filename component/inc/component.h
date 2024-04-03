@@ -12,6 +12,7 @@
 #define COMPONENT
 
 #include "errors.h"
+
 #include <stdint.h>
 
 enum class bootstate_t { PREBOOT, POSTBOST };

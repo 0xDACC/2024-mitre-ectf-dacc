@@ -1,25 +1,16 @@
 ﻿---
-AlignAfterOpenBracket: AlwaysBreak
 AlignConsecutiveMacros: 'true'
-AlignConsecutiveAssignments: 'true'
 AlignEscapedNewlines: Left
 AlignTrailingComments: 'true'
 AllowAllConstructorInitializersOnNextLine: 'false'
 AllowAllParametersOfDeclarationOnNextLine: 'true'
 AllowShortBlocksOnASingleLine: 'true'
-AllowShortCaseLabelsOnASingleLine: 'true'
 AllowShortFunctionsOnASingleLine: All
 AllowShortIfStatementsOnASingleLine: Always
 AllowShortLambdasOnASingleLine: All
 AllowShortLoopsOnASingleLine: 'true'
 AlwaysBreakAfterReturnType: None
 AlwaysBreakTemplateDeclarations: MultiLine
-BinPackArguments: 'true'
-BinPackParameters: 'true'
-BreakBeforeTernaryOperators: 'false'
-BreakConstructorInitializers: AfterColon
-BreakInheritanceList: AfterColon
-BreakStringLiterals: 'true'
 CompactNamespaces: 'false'
 ConstructorInitializerAllOnOneLineOrOnePerLine: 'true'
 DerivePointerAlignment: 'false'
@@ -29,7 +20,6 @@ IndentCaseLabels: 'true'
 IndentPPDirectives: BeforeHash
 IndentWidth: '4'
 IndentWrappedFunctionNames: 'false'
-JavaScriptQuotes: Single
 KeepEmptyLinesAtTheStartOfBlocks: 'false'
 Language: Cpp
 MaxEmptyLinesToKeep: '1'
@@ -54,7 +44,5 @@ SpacesInContainerLiterals: 'false'
 SpacesInParentheses: 'false'
 SpacesInSquareBrackets: 'false'
 Standard: Auto
-TabWidth: '4'
-UseTab: Always
-
+UseTab: Never
 ...

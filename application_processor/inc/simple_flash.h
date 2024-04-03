@@ -15,6 +15,7 @@
 #include "errors.h"
 #include "flc.h"
 #include "icc.h"
+
 #include <stdint.h>
 
 /**
@@ -41,7 +42,7 @@ error_t flash_simple_erase_page(const uint32_t address);
  * @param buffer Buffer to read into
  * @param size Size of buffer
  */
-template <typename T>
+template<typename T>
 void flash_simple_read(const uint32_t address, T *const buffer,
                        const uint32_t size) {
     MXC_ICC_Disable(MXC_ICC0);
@@ -61,14 +62,13 @@ void flash_simple_read(const uint32_t address, T *const buffer,
  * @return error_t Whether the write was successful
  */
 
-template <typename T>
+template<typename T>
 error_t flash_simple_write(const uint32_t address, T *const buffer,
                            const uint32_t size) {
     int ret;
     MXC_ICC_Disable(MXC_ICC0);
     MXC_SYS_Crit_Enter();
-    ret =
-        MXC_FLC_Write(address, size, reinterpret_cast<uint32_t *>(buffer));
+    ret = MXC_FLC_Write(address, size, reinterpret_cast<uint32_t *>(buffer));
     MXC_SYS_Crit_Exit();
     MXC_ICC_Enable(MXC_ICC0);
     return ret == E_NO_ERROR ? error_t::SUCCESS : error_t::ERROR;

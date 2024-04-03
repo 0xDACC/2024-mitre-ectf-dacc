@@ -10,24 +10,20 @@
  */
 #define COMP 1
 
+#include "component.h"
+
 #include "board.h"
+#include "crc32.h"
+#include "errors.h"
 #include "flc.h"
 #include "i2c.h"
 #include "led.h"
 #include "mxc_delay.h"
 #include "mxc_errors.h"
 #include "nvic_table.h"
-
-#include <stdio.h>
-#include <string.h>
-
-#include "component.h"
-#include "crc32.h"
-#include "errors.h"
 #include "packets.h"
 #include "random.h"
 #include "simple_i2c_peripheral.h"
-
 #include "tinycrypt/ctr_mode.h"
 #include "tinycrypt/ecc.h"
 #include "tinycrypt/ecc_dh.h"
@@ -35,15 +31,19 @@
 #include "tinycrypt/hmac.h"
 #include "tinycrypt/sha256.h"
 
+#include <stdio.h>
+#include <string.h>
+
 // Includes from containerized build
 #include "ectf_params_secure.h"
 #include "global_secrets_secure.h"
 
 #ifdef POST_BOOT
-#include "led.h"
-#include <stdint.h>
-#include <stdio.h>
-#include <string.h>
+    #include "led.h"
+
+    #include <stdint.h>
+    #include <stdio.h>
+    #include <string.h>
 #endif
 
 static volatile bootstate_t boot_state = bootstate_t::PREBOOT;
@@ -53,6 +53,9 @@ static uint8_t private_key[32] = {};
 static uint8_t public_key[64] = {};
 static uint32_t nonce = {};
 static uint8_t ctr[16] = {};
+
+static volatile bool ap_ready = false;
+static volatile bool comp_ready = false;
 using namespace i2c;
 
 void secure_send(const uint8_t *const buffer, const uint8_t len) {
@@ -64,7 +67,8 @@ void secure_send(const uint8_t *const buffer, const uint8_t len) {
 
     uint8_t hmac[32] = {};
 
-    // Wait for AP to send request
+    while (!ap_ready) { continue; }
+
     packet_t<packet_type_t::SECURE> rx_packet = {};
     rx_packet.header.magic = static_cast<packet_magic_t>(rxbuf[0]);
 
@@ -238,7 +242,6 @@ int secure_receive(uint8_t *const buffer) {
 }
 
 static void boot() {
-
 #ifdef POST_BOOT
     POST_BOOT
 #else
@@ -263,33 +266,34 @@ static void boot() {
 }
 
 error_t component_process_cmd(const uint8_t *const data) {
-    if (data == nullptr) {
-        return error_t::ERROR;
-    }
+    if (data == nullptr) { return error_t::ERROR; }
     if (boot_state == bootstate_t::PREBOOT) {
         switch (static_cast<packet_magic_t>(data[0])) {
-        case packet_magic_t::ATTEST:
-            return process_attest(data);
-            break;
-        case packet_magic_t::KEX:
-            return process_kex(data);
-            break;
-        case packet_magic_t::LIST:
-            return process_list(data);
-            break;
-        case packet_magic_t::BOOT:
-            return process_boot(data);
-            break;
-        default:
-            return error_t::ERROR;
+            case packet_magic_t::ATTEST:
+                return process_attest(data);
+                break;
+            case packet_magic_t::KEX:
+                return process_kex(data);
+                break;
+            case packet_magic_t::LIST:
+                return process_list(data);
+                break;
+            case packet_magic_t::BOOT:
+                return process_boot(data);
+                break;
+            default:
+                return error_t::ERROR;
         }
     } else {
         switch (static_cast<packet_magic_t>(data[0])) {
-        case packet_magic_t::ENCRYPTED:
-            return error_t::SUCCESS;
-            break;
-        default:
-            return error_t::ERROR;
+            case packet_magic_t::ENCRYPTED_REQ:
+                ap_ready = true;
+                break;
+            case packet_magic_t::ENCRYPTED:
+                return error_t::SUCCESS;
+                break;
+            default:
+                return error_t::ERROR;
         }
     }
 }
@@ -481,9 +485,7 @@ int main() {
         error_t::SUCCESS) {
         return -1;
     }
-    if (random_init() != error_t::SUCCESS) {
-        return -1;
-    }
+    if (random_init() != error_t::SUCCESS) { return -1; }
 
     uECC_make_key(public_key, private_key, uECC_secp256r1());
 
