@@ -487,14 +487,16 @@ static error_t attest_component(const uint32_t component_id,
     return error_t::SUCCESS;
 }
 
-static error_t perform_kex(const uint8_t addr) {
+static error_t perform_kex(const uint32_t component_id) {
     packet_t<packet_type_t::KEX> tx_packet = {};
     tx_packet.header.magic = packet_magic_t::KEX;
     tx_packet.payload.len = 0x60;
 
-    const uint8_t index = component_id_to_i2c_addr(addr);
+    const uint8_t index = cid_to_idx(component_id);
+    const i2c_addr_t addr = component_id_to_i2c_addr(component_id);
 
     if (index == 0xFF) {
+        print_error("Invalid component\n");
         return error_t::ERROR;
     }
 
@@ -618,7 +620,7 @@ static void attempt_boot() {
         const uint32_t component_id = flash_status.component_ids[i];
         const i2c_addr_t addr = component_id_to_i2c_addr(component_id);
 
-        if (perform_kex(addr) != error_t::SUCCESS) {
+        if (perform_kex(component_id) != error_t::SUCCESS) {
             print_error("Failed to perform key exchange with component\n");
             return;
         }
