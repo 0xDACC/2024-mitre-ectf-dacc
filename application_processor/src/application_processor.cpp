@@ -519,7 +519,6 @@ static error_t perform_kex(const uint32_t component_id) {
                                                                    tx_packet);
 
     if (rx_packet.header.magic == packet_magic_t::ERROR) {
-        print_error("Failed to perform key exchange: %d\n", component_id);
         return error_t::ERROR;
     }
 
@@ -609,6 +608,11 @@ static void attempt_boot() {
     for (uint32_t i = 0; i < flash_status.component_cnt; ++i) {
         const uint32_t component_id = flash_status.component_ids[i];
 
+        if (perform_kex(component_id) != error_t::SUCCESS) {
+            print_error("Failed to perform key exchange with component\n");
+            return;
+        }
+
         if (boot_component(component_id) != error_t::SUCCESS) {
             print_error("Failed to boot component\n");
             return;
@@ -617,15 +621,6 @@ static void attempt_boot() {
     print_info("AP>%.64s\n", AP_BOOT_MSG);
     print_success("Boot\n");
 
-    for (uint32_t i = 0; i < flash_status.component_cnt; ++i) {
-        const uint32_t component_id = flash_status.component_ids[i];
-        const i2c_addr_t addr = component_id_to_i2c_addr(component_id);
-
-        if (perform_kex(component_id) != error_t::SUCCESS) {
-            print_error("Failed to perform key exchange with component\n");
-            return;
-        }
-    }
     boot();
 }
 
