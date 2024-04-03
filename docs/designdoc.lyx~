@@ -1968,10 +1968,6 @@ Length != 0x40
 ecrecover(signature) != key A or key C
 \end_layout
 
-\begin_layout Itemize
-Startup ACK data == 0x00 and recover(signature) == key A or key C
-\end_layout
-
 \begin_layout Standard
 
 \series bold

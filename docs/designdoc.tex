@@ -118,44 +118,7 @@ Packet Magic & Checksum & Length & Attestation Data & Signature\tabularnewline
 \item Highly unlikely that the token can be brute forced
 \end{itemize}
 
-\paragraph{Verify component authenticity}
-\begin{enumerate}
-\item Store replacement public key in flash
-\item Generate a random number using onboard TRNG
-\item Ask new component to sign random number
-\item Verify using replacement public key
-\end{enumerate}
-
 \paragraph{Meets SR3}
-
-\begin{table}[H]
-\noindent \centering{}%
-\begin{tabular}{|c|c|c|c|}
-\hline 
-\multicolumn{2}{|c|}{Header} & \multicolumn{2}{c|}{Payload}\tabularnewline
-\hline 
-Packet Magic & Checksum & Length & Data\tabularnewline
-\hline 
-(1 byte) & (4 bytes) & (1 byte) & (32 bytes)\tabularnewline
-\hline 
- &  & 0x20 & \tabularnewline
-\hline 
-\end{tabular}\caption{Replace Data Packet}
-\end{table}
-\begin{table}[H]
-\noindent \centering{}%
-\begin{tabular}{|c|c|c|c|}
-\hline 
-\multicolumn{2}{|c|}{Header} & \multicolumn{2}{c|}{Payload}\tabularnewline
-\hline 
-Packet Magic & Checksum & Length & Signature\tabularnewline
-\hline 
-(1 byte) & (4 bytes) & (1 byte) & (64 bytes)\tabularnewline
-\hline 
- &  & 0x41 & \tabularnewline
-\hline 
-\end{tabular}\caption{Replace ACK Packet}
-\end{table}
 
 \newpage{}
 
