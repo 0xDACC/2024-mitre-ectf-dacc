@@ -519,6 +519,7 @@ static error_t perform_kex(const uint32_t component_id) {
                                                                    tx_packet);
 
     if (rx_packet.header.magic == packet_magic_t::ERROR) {
+        print_error("Failed to perform key exchange: %d\n", component_id);
         return error_t::ERROR;
     }
 
