@@ -140,14 +140,54 @@ static int secure_send(const uint8_t address, const uint8_t *const buffer,
         send_i2c_master_tx<packet_type_t::SECURE, packet_type_t::SECURE>(
             address, tx_packet);
 
-    if (rx_packet.header.magic != packet_magic_t::ENCRYPTED) {
+    if (rx_packet.header.magic == packet_magic_t::ERROR) {
+        print_error("Error :(\n");
         return -1;
-    } else if (rx_packet.header.magic == packet_magic_t::ERROR) {
-        return -1;
-    } else {
-        ++nonces[index];
-        return 0;
     }
+
+    const uint32_t expected_checksum =
+        calc_checksum(&rx_packet.payload, sizeof(rx_packet.payload));
+
+    if (rx_packet.header.magic != packet_magic_t::ENCRYPTED) {
+        // Invalid magic
+        print_error("Invalid magic\n");
+        return -1;
+    } else if (rx_packet.header.checksum != expected_checksum) {
+        // Checksum failed
+        print_error("Checksum failed %lx != %lx\n", rx_packet.header.checksum,
+                    expected_checksum);
+        return -1;
+    }
+
+    tc_sha256_init(&sha256_ctx);
+    tc_sha256_update(&sha256_ctx, shared_secrets[index], 32);
+    tc_sha256_final(hash, &sha256_ctx);
+
+    tc_aes128_set_encrypt_key(&aes_key, hash);
+    tc_ctr_mode(payload, sizeof(payload),
+                reinterpret_cast<const uint8_t *>(&rx_packet.payload),
+                sizeof(rx_packet.payload), ctrs[index], &aes_key);
+
+    tc_hmac_init(&hmac_ctx);
+    tc_hmac_set_key(&hmac_ctx, HMAC_KEY, 32);
+    tc_hmac_update(&hmac_ctx, &payload[0], sizeof(payload) - 32);
+    tc_hmac_final(hmac, 32, &hmac_ctx);
+
+    if (payload[0] != static_cast<uint8_t>(packet_magic_t::DECRYPTED)) {
+        // Invalid payload
+        print_error("Invalid payload\n");
+        return -1;
+    } else if (memcmp(&payload[2], &nonces[index], 0x04) != 0) {
+        // Invalid nonce
+        print_error("Invalid nonce\n");
+        return -1;
+    } else if (memcmp(hmac, &payload[sizeof(payload) - 32], 32) != 0) {
+        // HMAC failed
+        print_error("HMAC failed\n");
+        return -1;
+    }
+    ++nonces[index];
+    return 0;
 }
 
 /**

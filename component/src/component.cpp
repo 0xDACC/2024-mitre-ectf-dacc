@@ -56,10 +56,6 @@ static uint8_t ctr[16] = {};
 using namespace i2c;
 
 void secure_send(const uint8_t *const buffer, const uint8_t len) {
-    // Wait for AP to send request
-    while (rxbuf[0] != static_cast<uint8_t>(packet_magic_t::ENCRYPTED)) {
-        continue;
-    }
     uint8_t payload[sizeof(payload_t<packet_type_t::SECURE>)] = {};
     uint8_t hash[32] = {};
     tc_aes_key_sched_struct aes_key = {};
@@ -67,6 +63,51 @@ void secure_send(const uint8_t *const buffer, const uint8_t len) {
     tc_sha256_state_struct sha256_ctx = {};
 
     uint8_t hmac[32] = {};
+
+    // Wait for AP to send request
+    while (rxbuf[0] != static_cast<uint8_t>(packet_magic_t::ENCRYPTED)) {
+        continue;
+    }
+
+    packet_t<packet_type_t::SECURE> rx_packet = {};
+    rx_packet.header.magic = static_cast<packet_magic_t>(rxbuf[0]);
+
+    memcpy(&rx_packet.header.checksum, const_cast<uint8_t *>(&rxbuf[1]), 0x04);
+    memcpy(&rx_packet.payload, const_cast<uint8_t *>(&rxbuf[5]),
+           sizeof(rx_packet.payload));
+
+    tc_sha256_init(&sha256_ctx);
+    tc_sha256_update(&sha256_ctx, shared_secret, 32);
+    tc_sha256_final(hash, &sha256_ctx);
+
+    if (ctr[2] != 0xDA && ctr[3] != 0xCC) {
+        memcpy(ctr, "\x00X\xDA\xCC\x00X\xDA\xCC", 8);
+        memcpy(&ctr[8], &hash[16], 0x8);
+    }
+
+    tc_aes128_set_encrypt_key(&aes_key, hash);
+    tc_ctr_mode(payload, sizeof(payload),
+                reinterpret_cast<uint8_t *>(&rx_packet.payload),
+                sizeof(rx_packet.payload), ctr, &aes_key);
+
+    tc_hmac_init(&hmac_ctx);
+    tc_hmac_set_key(&hmac_ctx, HMAC_KEY, 32);
+    tc_hmac_update(&hmac_ctx, &payload[0], sizeof(payload) - 32);
+    tc_hmac_final(hmac, 32, &hmac_ctx);
+
+    if (payload[0] != static_cast<uint8_t>(packet_magic_t::DECRYPTED)) {
+        // Invalid payload
+        return;
+    } else if (memcmp(&payload[2], &nonce, 0x04) != 0) {
+        // Invalid nonce
+        return;
+    } else if (memcmp(hmac, &payload[sizeof(payload) - 32], 32) != 0) {
+        // HMAC failed
+        return;
+    } else if (payload[6] != 0x0) {
+        // Invalid length
+        return;
+    }
 
     packet_t<packet_type_t::SECURE> tx_packet = {};
     tx_packet.header.magic = packet_magic_t::ENCRYPTED;
@@ -164,6 +205,7 @@ int secure_receive(uint8_t *const buffer) {
         return -1;
     }
     memcpy(buffer, &payload[6], payload[1]);
+
     packet_t<packet_type_t::SECURE> tx_packet = {};
     tx_packet.header.magic = packet_magic_t::ENCRYPTED;
 
