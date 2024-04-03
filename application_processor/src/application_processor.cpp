@@ -641,8 +641,6 @@ static void attempt_replace() {
     recv_input("Component ID Out: ", buf, sizeof(buf));
     sscanf(buf, "%lx", &component_id_out);
 
-    const i2c_addr_t addr_in = component_id_to_i2c_addr(component_id_in);
-
     // Find the component to swap out
     for (uint32_t i = 0; i < flash_status.component_cnt; ++i) {
         if (flash_status.component_ids[i] == component_id_out) {
@@ -653,52 +651,12 @@ static void attempt_replace() {
             flash_simple_write(FLASH_ADDR, &flash_status,
                                sizeof(flash_entry_t));
 
-            packet_t<packet_type_t::REPLACE_COMMAND> tx_packet = {};
-            tx_packet.header.magic = packet_magic_t::REPLACE;
-            tx_packet.payload.len = 0x20;
-            random_bytes(tx_packet.payload.data, 32);
-
-            tx_packet.header.checksum =
-                calc_checksum(&tx_packet.payload, sizeof(tx_packet.payload));
-
-            const packet_t<packet_type_t::REPLACE_ACK> rx_packet =
-                send_i2c_master_tx<packet_type_t::REPLACE_ACK,
-                                   packet_type_t::REPLACE_COMMAND>(addr_in,
-                                                                   tx_packet);
-
-            if (rx_packet.header.magic != packet_magic_t::REPLACE_ACK) {
-                // Invalid response
-                print_error("Invalid response: %d\n",
-                            static_cast<uint32_t>(rx_packet.header.magic));
-                return;
-            } else if (rx_packet.header.checksum !=
-                       calc_checksum(&rx_packet.payload,
-                                     sizeof(rx_packet.payload))) {
-                // Invalid checksum
-                print_error("Invalid checksum\n");
-                return;
-            } else if (rx_packet.payload.len != 0x40) {
-                // Invalid payload length
-                print_error("Invalid payload length\n");
-                return;
-            } else if (uECC_verify(REPLACEMENT_PUB, tx_packet.payload.data, 32,
-                                   rx_packet.payload.data,
-                                   uECC_secp256r1()) != 1) {
-                // Invalid signature
-                print_error("Invalid signature\n");
-                return;
-            }
-
             print_debug("Replaced 0x%08lx with 0x%08lx\n", component_id_out,
                         component_id_in);
             print_success("Replace\n");
             return;
         }
     }
-
-    // Component Out was not found
-    print_error("Component 0x%08lx is not provisioned for the system\r\n",
-                component_id_out);
 }
 
 static void attempt_attest() {

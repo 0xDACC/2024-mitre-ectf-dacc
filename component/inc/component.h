@@ -57,14 +57,6 @@ error_t process_kex(const uint8_t *const data);
 error_t process_list(const uint8_t *const data);
 
 /**
- * @brief Process the replace command
- *
- * @param data Data received from the I2C ISR
- * @return Whether the command was processed successfully
- */
-error_t process_replace(const uint8_t *const data);
-
-/**
  * @brief Process the boot signature command
  *
  * @param data Data received from the I2C ISR

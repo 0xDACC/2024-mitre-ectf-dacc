@@ -28,8 +28,6 @@ enum class packet_magic_t : uint8_t {
 	BOOT_ACK,
 	DECRYPTED,
 	ENCRYPTED,
-	REPLACE,
-	REPLACE_ACK,
 };
 
 /**
@@ -46,8 +44,6 @@ enum class packet_type_t : uint8_t {
 	BOOT_COMMAND,
 	BOOT_ACK,
 	SECURE,
-	REPLACE_COMMAND,
-	REPLACE_ACK,
 };
 
 /**
@@ -145,24 +141,6 @@ template<> struct __packed payload_t<packet_type_t::SECURE> {
 	uint32_t nonce;
 	uint8_t data[64];
 	uint8_t hmac[32];
-};
-
-/**
- * @brief Replace command packet payload
- *
- */
-template<> struct __packed payload_t<packet_type_t::REPLACE_COMMAND> {
-	uint8_t len;
-	uint8_t data[32];
-};
-
-/**
- * @brief Replace ack packet payload
- *
- */
-template<> struct __packed payload_t<packet_type_t::REPLACE_ACK> {
-	uint8_t len;
-	uint8_t data[64];
 };
 
 /**

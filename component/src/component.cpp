@@ -226,9 +226,6 @@ error_t component_process_cmd(const uint8_t *const data) {
         case packet_magic_t::ATTEST:
             return process_attest(data);
             break;
-        case packet_magic_t::REPLACE:
-            return process_replace(data);
-            break;
         case packet_magic_t::KEX:
             return process_kex(data);
             break;
@@ -325,43 +322,6 @@ error_t process_list(const uint8_t *const data) {
         calc_checksum(&tx_packet.payload, sizeof(tx_packet.payload));
 
     send_packet<packet_type_t::LIST_ACK>(tx_packet);
-    return error_t::SUCCESS;
-}
-
-error_t process_replace(const uint8_t *const data) {
-    packet_t<packet_type_t::REPLACE_COMMAND> rx_packet = {};
-    rx_packet.header.magic = static_cast<packet_magic_t>(data[0]);
-
-    memcpy(&rx_packet.header.checksum, &data[1], 0x04);
-    memcpy(&rx_packet.payload, &data[5], sizeof(rx_packet.payload));
-
-    const uint32_t expected_checksum =
-        calc_checksum(&rx_packet.payload, sizeof(rx_packet.payload));
-    if (rx_packet.header.magic != packet_magic_t::REPLACE) {
-        // Invalid magic
-        return error_t::ERROR;
-    } else if (rx_packet.header.checksum != expected_checksum) {
-        // Checksum failed
-        return error_t::ERROR;
-    } else if (rx_packet.payload.len != 0x20) {
-        // Invalid payload length
-        return error_t::ERROR;
-    }
-
-    packet_t<packet_type_t::REPLACE_ACK> tx_packet = {};
-    tx_packet.header.magic = packet_magic_t::REPLACE_ACK;
-    tx_packet.payload.len = 0x40;
-
-    if (uECC_sign(BOOT_C_PRIV, rx_packet.payload.data, 0x20,
-                  tx_packet.payload.data, uECC_secp256r1()) != 1) {
-        // Couldn't sign
-tx_packet.header.magic = packet_magic_t(4);
-        send_packet<packet_type_t::REPLACE_ACK>(tx_packet);
-        return error_t::SUCCESS;    }
-
-    tx_packet.header.checksum =
-        calc_checksum(&tx_packet.payload, sizeof(tx_packet.payload));
-    send_packet<packet_type_t::REPLACE_ACK>(tx_packet);
     return error_t::SUCCESS;
 }
 
