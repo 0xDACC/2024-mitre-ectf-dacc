@@ -403,7 +403,7 @@ error_t process_kex(const uint8_t *const data) {
     if (rx_packet.header.checksum != expected_checksum) {
         // Checksum failed
         return error_t::ERROR;
-    } else if (rx_packet.payload.len != 0x60) {
+    } else if (rx_packet.payload.len != 0x40) {
         // Invalid payload length
         return error_t::ERROR;
     } else if (uECC_valid_public_key(rx_packet.payload.material,

@@ -308,7 +308,7 @@ continue operation.}}
 \hline 
 \multicolumn{2}{|c|}{Header} & \multicolumn{5}{c|}{Encrypted Payload}\tabularnewline
 \hline 
-Packet Magic & Checksum & Payload Magic & Length - 1 & Nonce & Data & HMAC\tabularnewline
+Packet Magic & Checksum & Payload Magic & Length & Nonce & Data & HMAC\tabularnewline
 \hline 
 (1 byte) & (4 bytes) & (1 byte) & (1 byte) & (4 bytes) & (256 bytes) & (32 bytes)\tabularnewline
 \hline 
@@ -318,34 +318,19 @@ Packet Magic & Checksum & Payload Magic & Length - 1 & Nonce & Data & HMAC\tabul
 \end{table}
 \begin{table}[H]
 \centering{}%
-\begin{tabular}{|c|c|c|c|c|}
+\begin{tabular}{|c|c|c|c|}
 \hline 
-\multicolumn{2}{|c|}{Header} & \multicolumn{3}{c|}{Payload}\tabularnewline
+\multicolumn{2}{|c|}{Header} & \multicolumn{2}{c|}{Payload}\tabularnewline
 \hline 
-Packet Magic & Checksum & Length & Key Material & Key Hash\tabularnewline
+Packet Magic & Checksum & Length & Key Material\tabularnewline
 \hline 
-(1 byte) & (4 bytes) & (1 byte) & (64 bytes) & (32 bytes)\tabularnewline
+(1 byte) & (4 bytes) & (1 byte) & (64 bytes)\tabularnewline
 \hline 
- &  & 0x60 &  & \tabularnewline
+ &  & 0x40 & \tabularnewline
 \hline 
 \end{tabular}\caption{Key Exchange I2C Packet}
 \end{table}
 
-\newpage{}
-
-\section{Other}
-
-\paragraph{Secure key storage}
-\begin{itemize}
-\item All asymmetric and symmetric keys located on flash will be stored
-in an encrypted state
-\item Wrapper keys will be compile-time constants and XOR'ed with another
-compile-time constant so the raw key will \emph{NEVER} be stored in
-flash
-\item By wrapping all keys, a flash dumper payload would not be able to
-extract the real keys and static reverse engineering would have a
-similar outcome
-\end{itemize}
 \newpage{}
 
 \section{Summary}

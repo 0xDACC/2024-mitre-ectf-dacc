@@ -476,7 +476,7 @@ static error_t attest_component(const uint32_t component_id,
 static error_t perform_kex(const uint32_t component_id) {
     packet_t<packet_type_t::KEX> tx_packet = {};
     tx_packet.header.magic = packet_magic_t::KEX;
-    tx_packet.payload.len = 0x60;
+    tx_packet.payload.len = 0x40;
 
     const uint8_t index = cid_to_idx(component_id);
     const i2c_addr_t addr = component_id_to_i2c_addr(component_id);

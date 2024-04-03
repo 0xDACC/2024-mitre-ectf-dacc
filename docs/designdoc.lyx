@@ -2122,7 +2122,7 @@ Meets SR5
 placement H
 wide false
 sideways false
-status collapsed
+status open
 
 \begin_layout Plain Layout
 \align center
@@ -2233,7 +2233,7 @@ Payload Magic
 \begin_inset Text
 
 \begin_layout Plain Layout
-Length - 1
+Length
 \end_layout
 
 \end_inset
@@ -2419,18 +2419,17 @@ Encrypted I2C Packet
 placement H
 wide false
 sideways false
-status collapsed
+status open
 
 \begin_layout Plain Layout
 \align center
 \begin_inset Tabular
-<lyxtabular version="3" rows="4" columns="5">
+<lyxtabular version="3" rows="4" columns="4">
 <features tabularvalignment="middle">
 <column alignment="center" valignment="top">
 <column alignment="center" valignment="top">
 <column alignment="center" valignment="top" width="0pt">
 <column alignment="center" valignment="top" width="0pt">
-<column alignment="center" valignment="top">
 <row>
 <cell multicolumn="1" alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
 \begin_inset Text
@@ -2468,15 +2467,6 @@ Payload
 
 \end_inset
 </cell>
-<cell multicolumn="2" alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
-\begin_inset Text
-
-\begin_layout Plain Layout
-
-\end_layout
-
-\end_inset
-</cell>
 </row>
 <row>
 <cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
@@ -2506,20 +2496,11 @@ Length
 
 \end_inset
 </cell>
-<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
-\begin_inset Text
-
-\begin_layout Plain Layout
-Key Material
-\end_layout
-
-\end_inset
-</cell>
 <cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
 \begin_inset Text
 
 \begin_layout Plain Layout
-Key Hash
+Key Material
 \end_layout
 
 \end_inset
@@ -2553,20 +2534,11 @@ Key Hash
 
 \end_inset
 </cell>
-<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
-\begin_inset Text
-
-\begin_layout Plain Layout
-(64 bytes)
-\end_layout
-
-\end_inset
-</cell>
 <cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
 \begin_inset Text
 
 \begin_layout Plain Layout
-(32 bytes)
+(64 bytes)
 \end_layout
 
 \end_inset
@@ -2595,16 +2567,7 @@ Key Hash
 \begin_inset Text
 
 \begin_layout Plain Layout
-0x60
-\end_layout
-
-\end_inset
-</cell>
-<cell alignment="center" valignment="top" topline="true" bottomline="true" leftline="true" usebox="none">
-\begin_inset Text
-
-\begin_layout Plain Layout
-
+0x40
 \end_layout
 
 \end_inset
@@ -2638,43 +2601,6 @@ Key Exchange I2C Packet
 \end_inset
 
 
-\end_layout
-
-\begin_layout Standard
-\begin_inset Newpage newpage
-\end_inset
-
-
-\end_layout
-
-\begin_layout Section
-\noindent
-
-\series bold
-Other
-\end_layout
-
-\begin_layout Paragraph
-Secure key storage
-\end_layout
-
-\begin_layout Itemize
-All asymmetric and symmetric keys located on flash will be stored in an
- encrypted state
-\end_layout
-
-\begin_layout Itemize
-Wrapper keys will be compile-time constants and XOR'ed with another compile-time
- constant so the raw key will 
-\emph on
-NEVER
-\emph default
- be stored in flash
-\end_layout
-
-\begin_layout Itemize
-By wrapping all keys, a flash dumper payload would not be able to extract
- the real keys and static reverse engineering would have a similar outcome
 \end_layout
 
 \begin_layout Standard
