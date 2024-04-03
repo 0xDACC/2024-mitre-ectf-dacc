@@ -185,6 +185,9 @@ static int secure_send(const uint8_t address, const uint8_t *const buffer,
         // HMAC failed
         print_error("HMAC failed\n");
         return -1;
+    } else if (payload[6] != 0) {
+        print_error("Invalid length\n");
+        return -1;
     }
     ++nonces[index];
     return 0;
