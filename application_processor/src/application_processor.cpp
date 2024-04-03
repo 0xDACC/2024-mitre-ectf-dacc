@@ -174,6 +174,7 @@ static int secure_receive(const i2c_addr_t address, uint8_t *const buffer) {
     uint8_t hmac[32] = {};
 
     if (index == 0xFF) {
+        print_error("Error :(\n");
         return -1;
     }
 
@@ -212,6 +213,7 @@ static int secure_receive(const i2c_addr_t address, uint8_t *const buffer) {
             address, tx_packet);
 
     if (rx_packet.header.magic == packet_magic_t::ERROR) {
+        print_error("Error :(\n");
         return -1;
     }
 
@@ -220,9 +222,11 @@ static int secure_receive(const i2c_addr_t address, uint8_t *const buffer) {
 
     if (rx_packet.header.magic != packet_magic_t::ENCRYPTED) {
         // Invalid magic
+        print_error("Invalid magic\n");
         return -1;
     } else if (rx_packet.header.checksum != expected_checksum) {
         // Checksum failed
+        print_error("Checksum failed\n");
         return -1;
     }
 
@@ -242,17 +246,20 @@ static int secure_receive(const i2c_addr_t address, uint8_t *const buffer) {
 
     if (payload[0] != static_cast<uint8_t>(packet_magic_t::DECRYPTED)) {
         // Invalid payload
+        print_error("Invalid payload\n");
         return -1;
     } else if (memcmp(&payload[2], &nonces[index], 0x04) != 0) {
         // Invalid nonce
+        print_error("Invalid nonce\n");
         return -1;
     } else if (memcmp(hmac, &payload[sizeof(payload) - 32], 32) != 0) {
         // HMAC failed
+        print_error("HMAC failed\n");
         return -1;
     }
     ++nonces[index];
     memcpy(buffer, &payload[6], payload[1]);
-    print_hex(buffer, payload[1]);
+    print_hex_debug(buffer, payload[1]);
     return payload[1];
 }
 
