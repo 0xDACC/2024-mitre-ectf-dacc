@@ -67,6 +67,7 @@ static uint8_t shared_secrets[COMPONENT_CNT][32] = {};
 static uint8_t private_keys[COMPONENT_CNT][32] = {};
 static uint8_t public_keys[COMPONENT_CNT][64] = {};
 static uint32_t nonces[COMPONENT_CNT] = {};
+static uint8_t aes_keys[COMPONENT_CNT][16] = {};
 static uint8_t ctrs[COMPONENT_CNT][16] = {};
 
 static inline uint8_t addr_to_idx(const i2c_addr_t addr) {
@@ -96,10 +97,8 @@ static int secure_send(const uint8_t address, const uint8_t *const buffer,
     const uint8_t index = addr_to_idx(address);
 
     uint8_t payload[sizeof(payload_t<packet_type_t::SECURE>)] = {};
-    uint8_t hash[32] = {};
     tc_aes_key_sched_struct aes_key = {};
     tc_hmac_state_struct hmac_ctx = {};
-    tc_sha256_state_struct sha256_ctx = {};
 
     uint8_t hmac[32] = {};
 
@@ -114,21 +113,14 @@ static int secure_send(const uint8_t address, const uint8_t *const buffer,
     payload[1] = len;
     memcpy(&payload[2], &nonces[index], 0x04);
     memcpy(&payload[6], buffer, len);
+
     tc_hmac_init(&hmac_ctx);
     tc_hmac_set_key(&hmac_ctx, HMAC_KEY, 32);
     tc_hmac_update(&hmac_ctx, &payload[0], sizeof(payload) - 32);
     tc_hmac_final(hmac, 32, &hmac_ctx);
     memcpy(&payload[sizeof(payload) - 32], hmac, 32);
 
-    tc_sha256_init(&sha256_ctx);
-    tc_sha256_update(&sha256_ctx, shared_secrets[index], 32);
-    tc_sha256_final(hash, &sha256_ctx);
-
-    if (ctrs[index][2] != 0xDA && ctrs[index][3] != 0xCC) {
-        memcpy(ctrs[index], "\x00X\xDA\xCC\x00X\xDA\xCC", 8);
-        memcpy(&ctrs[index][8], &hash[16], 0x8);
-    }
-    tc_aes128_set_encrypt_key(&aes_key, hash);
+    tc_aes128_set_encrypt_key(&aes_key, aes_keys[index]);
     tc_ctr_mode(reinterpret_cast<uint8_t *>(&tx_packet.payload),
                 sizeof(tx_packet.payload), payload, sizeof(payload),
                 ctrs[index], &aes_key);
@@ -159,11 +151,7 @@ static int secure_send(const uint8_t address, const uint8_t *const buffer,
         return -1;
     }
 
-    tc_sha256_init(&sha256_ctx);
-    tc_sha256_update(&sha256_ctx, shared_secrets[index], 32);
-    tc_sha256_final(hash, &sha256_ctx);
-
-    tc_aes128_set_encrypt_key(&aes_key, hash);
+    tc_aes128_set_encrypt_key(&aes_key, aes_keys[index]);
     tc_ctr_mode(payload, sizeof(payload),
                 reinterpret_cast<const uint8_t *>(&rx_packet.payload),
                 sizeof(rx_packet.payload), ctrs[index], &aes_key);
@@ -234,16 +222,7 @@ static int secure_receive(const i2c_addr_t address, uint8_t *const buffer) {
     tc_hmac_final(hmac, 32, &hmac_ctx);
     memcpy(&payload[sizeof(payload) - 32], hmac, 32);
 
-    tc_sha256_init(&sha256_ctx);
-    tc_sha256_update(&sha256_ctx, shared_secrets[index], 32);
-    tc_sha256_final(hash, &sha256_ctx);
-
-    if (ctrs[index][2] != 0xDA && ctrs[index][3] != 0xCC) {
-        memcpy(ctrs[index], "\x00X\xDA\xCC\x00X\xDA\xCC", 8);
-        memcpy(&ctrs[index][8], &hash[16], 0x8);
-    }
-
-    tc_aes128_set_encrypt_key(&aes_key, hash);
+    tc_aes128_set_encrypt_key(&aes_key, aes_keys[index]);
     tc_ctr_mode(reinterpret_cast<uint8_t *>(&tx_packet.payload),
                 sizeof(tx_packet.payload), payload, sizeof(payload),
                 ctrs[index], &aes_key);
@@ -256,7 +235,7 @@ static int secure_receive(const i2c_addr_t address, uint8_t *const buffer) {
             address, tx_packet);
 
     if (rx_packet.header.magic == packet_magic_t::ERROR) {
-        print_error("Error :(\n");
+        print_error("I2C Error :(\n");
         return -1;
     }
 
@@ -274,11 +253,7 @@ static int secure_receive(const i2c_addr_t address, uint8_t *const buffer) {
         return -1;
     }
 
-    tc_sha256_init(&sha256_ctx);
-    tc_sha256_update(&sha256_ctx, shared_secrets[index], 32);
-    tc_sha256_final(hash, &sha256_ctx);
-
-    tc_aes128_set_encrypt_key(&aes_key, hash);
+    tc_aes128_set_encrypt_key(&aes_key, aes_keys[index]);
     tc_ctr_mode(payload, sizeof(payload),
                 reinterpret_cast<const uint8_t *>(&rx_packet.payload),
                 sizeof(rx_packet.payload), ctrs[index], &aes_key);
@@ -577,6 +552,13 @@ static error_t perform_kex(const uint32_t component_id) {
     }
     uECC_shared_secret(rx_packet.payload.material, private_keys[index],
                        shared_secrets[index], uECC_secp256r1());
+    tc_sha256_init(&sha256_ctx);
+    tc_sha256_update(&sha256_ctx, shared_secrets[index], 32);
+    tc_sha256_final(hash, &sha256_ctx);
+
+    memcpy(ctrs[index], "\x00X\xDA\xCC\x00X\xDA\xCC", 8);
+    memcpy(&ctrs[index][8], &hash[16], 0x8);
+    memcpy(aes_keys[index], hash, 16);
     return error_t::SUCCESS;
 }
 
