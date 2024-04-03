@@ -28,6 +28,7 @@ enum class packet_magic_t : uint8_t {
 	BOOT_ACK,
 	DECRYPTED,
 	ENCRYPTED,
+	ENCRYPTED_REQ
 };
 
 /**
@@ -44,6 +45,7 @@ enum class packet_type_t : uint8_t {
 	BOOT_COMMAND,
 	BOOT_ACK,
 	SECURE,
+	SECURE_REQ
 };
 
 /**
@@ -135,6 +137,19 @@ template<> struct __packed payload_t<packet_type_t::BOOT_ACK> {
  *
  */
 template<> struct __packed payload_t<packet_type_t::SECURE> {
+	uint8_t magic;
+	uint8_t len;
+	uint32_t nonce;
+	uint8_t data[64];
+	uint8_t __padding[10];	// Pad to multiple of 16 bytes
+	uint8_t hmac[32];
+};
+
+/**
+ * @brief Secure packet payload
+ *
+ */
+template<> struct __packed payload_t<packet_type_t::SECURE_REQ> {
 	uint8_t magic;
 	uint8_t len;
 	uint32_t nonce;
