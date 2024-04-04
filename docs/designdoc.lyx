@@ -2683,5 +2683,34 @@ All messages will follow a standard packet format with a negotiated HMAC
 A nonce and ephermeral keys may be included to limit replay attacks
 \end_layout
 
+\begin_layout Subsection
+Other
+\end_layout
+
+\begin_layout Itemize
+New I2C packet based subsystem
+\end_layout
+
+\begin_deeper
+\begin_layout Itemize
+Packets follow a standard format and are sent padded to 256 bytes.
+\end_layout
+
+\begin_layout Itemize
+All packets have identifiers, as well as a common header
+\end_layout
+
+\end_deeper
+\begin_layout Itemize
+Intel TinyCrypt library added
+\end_layout
+
+\begin_deeper
+\begin_layout Itemize
+Provides secure implementations of various cryptographic algorithms, with
+ minor changes to the AES and RNG functions to utilize onboard hardware
+\end_layout
+
+\end_deeper
 \end_body
 \end_document

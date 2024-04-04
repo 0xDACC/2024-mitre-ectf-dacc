@@ -371,4 +371,19 @@ HMAC key and assymetric encryption
 \item A nonce and ephermeral keys may be included to limit replay attacks
 \end{itemize}
 
+\subsection{Other}
+\begin{itemize}
+\item New I2C packet based subsystem
+\begin{itemize}
+\item Packets follow a standard format and are sent padded to 256 bytes.
+\item All packets have identifiers, as well as a common header
+\end{itemize}
+\item Intel TinyCrypt library added
+\begin{itemize}
+\item Provides secure implementations of various cryptographic algorithms,
+with minor changes to the AES and RNG functions to utilize onboard
+hardware
+\end{itemize}
+\end{itemize}
+
 \end{document}
