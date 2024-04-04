@@ -165,6 +165,10 @@ static int secure_send(const uint8_t address, const uint8_t *const buffer,
         // Invalid payload
         print_error("Invalid payload\n");
         return -1;
+    } else if (payload[1] != 0) {
+        // Invalid length
+        print_error("Invalid length\n");
+        return -1;
     } else if (memcmp(&payload[2], &nonces[index], 0x04) != 0) {
         // Invalid nonce
         print_error("Invalid nonce\n");
@@ -172,9 +176,6 @@ static int secure_send(const uint8_t address, const uint8_t *const buffer,
     } else if (memcmp(hmac, &payload[sizeof(payload) - 32], 32) != 0) {
         // HMAC failed
         print_error("HMAC failed\n");
-        return -1;
-    } else if (payload[6] != 0) {
-        print_error("Invalid length\n");
         return -1;
     }
     ++nonces[index];
@@ -190,8 +191,8 @@ static int secure_send(const uint8_t address, const uint8_t *const buffer,
  * @return int: number of bytes received, negative if error
  *
  * Securely receive data over I2C. This function is utilized in POST_BOOT
- * functionality. This function must be implemented by your team to align with
- * the security requirements.
+ * functionality. This function must be implemented by your team to align
+ * with the security requirements.
  */
 static int secure_receive(const i2c_addr_t address, uint8_t *const buffer) {
     const uint8_t index = addr_to_idx(address);
