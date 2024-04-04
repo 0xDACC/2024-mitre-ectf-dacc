@@ -476,6 +476,7 @@ error_t process_secure_receive(const uint8_t *const data) {
 
     ++nonce;
     send_packet<packet_type_t::SECURE>(tx_packet);
+    return error_t::SUCCESS;
 }
 
 int main() {
