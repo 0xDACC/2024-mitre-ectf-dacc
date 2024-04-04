@@ -343,7 +343,8 @@ error_t process_secure_send(const uint8_t *const data) {
 
     tc_hmac_init(&hmac_ctx);
     tc_hmac_set_key(&hmac_ctx, HMAC_KEY, 32);
-    tc_hmac_update(&hmac_ctx, &payload[0], sizeof(payload) - 32);
+    tc_hmac_update(&hmac_ctx, &rx_packet.payload,
+                   sizeof(rx_packet.payload) - 32);
     tc_hmac_final(hmac, 32, &hmac_ctx);
 
     const uint32_t expected_checksum = calc_checksum(payload, sizeof(payload));
@@ -422,7 +423,8 @@ error_t process_secure_receive(const uint8_t *const data) {
 
     tc_hmac_init(&hmac_ctx);
     tc_hmac_set_key(&hmac_ctx, HMAC_KEY, 32);
-    tc_hmac_update(&hmac_ctx, &payload[0], sizeof(payload) - 32);
+    tc_hmac_update(&hmac_ctx, &rx_packet.payload,
+                   sizeof(rx_packet.payload) - 32);
     tc_hmac_final(hmac, 32, &hmac_ctx);
 
     const uint32_t expected_checksum = calc_checksum(payload, sizeof(payload));
