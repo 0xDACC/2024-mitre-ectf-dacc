@@ -66,14 +66,30 @@ error_t process_list(const uint8_t *const data);
 error_t process_boot_sig(const uint8_t *const data);
 
 /**
+ * @brief Process the secure send to AP command
+ *
+ * @param data Data received from the I2C ISR
+ * @return Whether the command was processed successfully
+ */
+error_t process_secure_send(const uint8_t *const data);
+
+/**
+ * @brief Process the secure receive from AP command
+ *
+ * @param data Data received from the I2C ISR
+ * @return Whether the command was processed successfully
+ */
+error_t process_secure_receive(const uint8_t *const data);
+
+/**
  * @brief Secure Send
  *
  * @param buffer: uint8_t*, pointer to data to be send
  * @param len: uint8_t, size of data to be sent
  *
  * Securely send data over I2C. This function is utilized in POST_BOOT
- * functionality. This function must be implemented by your team to align with
- * the security requirements.
+ * functionality. This function must be implemented by your team to align
+ * with the security requirements.
  */
 void secure_send(const uint8_t *const buffer, const uint8_t len);
 

@@ -69,10 +69,11 @@ namespace i2c {
      */
     template<packet_type_t T> void send_packet(packet_t<T> packet) {
         txbuf[0] = static_cast<uint8_t>(packet.header.magic);
-
+        MXC_SYS_Crit_Enter();
         memcpy(const_cast<uint8_t *>(&txbuf[1]), &packet.header.checksum, 0x04);
         memcpy(const_cast<uint8_t *>(&txbuf[5]), &packet.payload,
                sizeof(payload_t<T>));
+        MXC_SYS_Crit_Exit();
     }
 
     /**

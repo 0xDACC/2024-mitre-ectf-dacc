@@ -53,192 +53,29 @@ static uint8_t private_key[32] = {};
 static uint8_t public_key[64] = {};
 static uint32_t nonce = {};
 static uint8_t ctr[16] = {};
+static uint8_t aes_key[16] = {};
 
-static volatile bool ap_ready = false;
-static volatile bool comp_ready = false;
 using namespace i2c;
 
+static volatile uint8_t securebuf[255] = {};
+static volatile uint8_t securelen = {};
+
 void secure_send(const uint8_t *const buffer, const uint8_t len) {
-    uint8_t payload[sizeof(payload_t<packet_type_t::SECURE>)] = {};
-    uint8_t hash[32] = {};
-    tc_aes_key_sched_struct aes_key = {};
-    tc_hmac_state_struct hmac_ctx = {};
-    tc_sha256_state_struct sha256_ctx = {};
-
-    uint8_t hmac[32] = {};
-
-    while (!ap_ready) { continue; }
-
-    packet_t<packet_type_t::SECURE> rx_packet = {};
-    rx_packet.header.magic = static_cast<packet_magic_t>(rxbuf[0]);
-
-    memcpy(&rx_packet.header.checksum, const_cast<uint8_t *>(&rxbuf[1]), 0x04);
-    memcpy(&rx_packet.payload, const_cast<uint8_t *>(&rxbuf[5]),
-           sizeof(rx_packet.payload));
-
-    tc_sha256_init(&sha256_ctx);
-    tc_sha256_update(&sha256_ctx, shared_secret, 32);
-    tc_sha256_final(hash, &sha256_ctx);
-
-    if (ctr[2] != 0xDA && ctr[3] != 0xCC) {
-        memcpy(ctr, "\x00X\xDA\xCC\x00X\xDA\xCC", 8);
-        memcpy(&ctr[8], &hash[16], 0x8);
-    }
-
-    tc_aes128_set_encrypt_key(&aes_key, hash);
-    tc_ctr_mode(payload, sizeof(payload),
-                reinterpret_cast<uint8_t *>(&rx_packet.payload),
-                sizeof(rx_packet.payload), ctr, &aes_key);
-
-    tc_hmac_init(&hmac_ctx);
-    tc_hmac_set_key(&hmac_ctx, HMAC_KEY, 32);
-    tc_hmac_update(&hmac_ctx, &payload[0], sizeof(payload) - 32);
-    tc_hmac_final(hmac, 32, &hmac_ctx);
-
-    if (payload[0] != static_cast<uint8_t>(packet_magic_t::DECRYPTED)) {
-        // Invalid payload
-        return;
-    } else if (memcmp(&payload[2], &nonce, 0x04) != 0) {
-        // Invalid nonce
-        return;
-    } else if (memcmp(hmac, &payload[sizeof(payload) - 32], 32) != 0) {
-        // HMAC failed
-        return;
-    } else if (payload[6] != 0x0) {
-        // Invalid length
-        return;
-    }
-
-    packet_t<packet_type_t::SECURE> tx_packet = {};
-    tx_packet.header.magic = packet_magic_t::ENCRYPTED;
-
-    payload[0] = static_cast<uint8_t>(packet_magic_t::DECRYPTED);
-    payload[1] = len;
-    memcpy(&payload[2], &nonce, 0x04);
-    memcpy(&payload[6], buffer, len);
-
-    tc_hmac_init(&hmac_ctx);
-    tc_hmac_set_key(&hmac_ctx, HMAC_KEY, 32);
-    tc_hmac_update(&hmac_ctx, &payload[0], sizeof(payload) - 32);
-    tc_hmac_final(hmac, 32, &hmac_ctx);
-    memcpy(&payload[sizeof(payload) - 32], hmac, 32);
-
-    tc_sha256_init(&sha256_ctx);
-    tc_sha256_update(&sha256_ctx, shared_secret, 32);
-    tc_sha256_final(hash, &sha256_ctx);
-
-    if (ctr[2] != 0xDA && ctr[3] != 0xCC) {
-        memcpy(ctr, "\x00X\xDA\xCC\x00X\xDA\xCC", 8);
-        memcpy(&ctr[8], &hash[16], 0x8);
-    }
-    tc_aes128_set_encrypt_key(&aes_key, hash);
-    tc_ctr_mode(reinterpret_cast<uint8_t *>(&tx_packet.payload),
-                sizeof(tx_packet.payload), payload, sizeof(payload), ctr,
-                &aes_key);
-
-    tx_packet.header.checksum =
-        calc_checksum(&tx_packet.payload, sizeof(tx_packet.payload));
-
-    ++nonce;
-    send_packet<packet_type_t::SECURE>(tx_packet);
+    MXC_SYS_Crit_Enter();
+    memcpy(const_cast<uint8_t *>(securebuf), buffer, len);
+    MXC_SYS_Crit_Exit();
+    securelen = len;
+    while (securelen != 0) { continue; }
+    return;
 }
 
 int secure_receive(uint8_t *const buffer) {
-    uint8_t payload[sizeof(payload_t<packet_type_t::SECURE>)] = {};
-    uint8_t hash[32] = {};
-    tc_aes_key_sched_struct aes_key = {};
-    tc_hmac_state_struct hmac_ctx = {};
-    tc_sha256_state_struct sha256_ctx = {};
-
-    uint8_t hmac[32] = {};
-
-    // Wait for packet
-    while (static_cast<packet_magic_t>(rxbuf[0]) != packet_magic_t::ENCRYPTED) {
-        continue;
-    }
-
-    packet_t<packet_type_t::SECURE> rx_packet = {};
-    rx_packet.header.magic = static_cast<packet_magic_t>(rxbuf[0]);
-
-    memcpy(&rx_packet.header.checksum, const_cast<uint8_t *>(&rxbuf[1]), 0x04);
-    memcpy(&rx_packet.payload, const_cast<uint8_t *>(&rxbuf[5]),
-           sizeof(rx_packet.payload));
-
-    const uint32_t expected_checksum =
-        calc_checksum(&rx_packet.payload, sizeof(rx_packet.payload));
-
-    if (rx_packet.header.magic != packet_magic_t::ENCRYPTED) {
-        // Invalid magic
-        return -1;
-    } else if (rx_packet.header.checksum != expected_checksum) {
-        // Checksum failed
-        return -1;
-    }
-
-    tc_sha256_init(&sha256_ctx);
-    tc_sha256_update(&sha256_ctx, shared_secret, 32);
-    tc_sha256_final(hash, &sha256_ctx);
-
-    if (ctr[2] != 0xDA && ctr[3] != 0xCC) {
-        memcpy(ctr, "\x00X\xDA\xCC\x00X\xDA\xCC", 8);
-        memcpy(&ctr[8], &hash[16], 0x8);
-    }
-
-    tc_aes128_set_encrypt_key(&aes_key, hash);
-    tc_ctr_mode(payload, sizeof(payload),
-                reinterpret_cast<uint8_t *>(&rx_packet.payload),
-                sizeof(rx_packet.payload), ctr, &aes_key);
-
-    tc_hmac_init(&hmac_ctx);
-    tc_hmac_set_key(&hmac_ctx, HMAC_KEY, 32);
-    tc_hmac_update(&hmac_ctx, &payload[0], sizeof(payload) - 32);
-    tc_hmac_final(hmac, 32, &hmac_ctx);
-
-    if (payload[0] != static_cast<uint8_t>(packet_magic_t::DECRYPTED)) {
-        // Invalid payload
-        return -1;
-    } else if (memcmp(&payload[2], &nonce, 0x04) != 0) {
-        // Invalid nonce
-        return -1;
-    } else if (memcmp(hmac, &payload[sizeof(payload) - 32], 32) != 0) {
-        // HMAC failed
-        return -1;
-    }
-    memcpy(buffer, &payload[6], payload[1]);
-
-    packet_t<packet_type_t::SECURE> tx_packet = {};
-    tx_packet.header.magic = packet_magic_t::ENCRYPTED;
-
-    payload[0] = static_cast<uint8_t>(packet_magic_t::DECRYPTED);
-    payload[1] = 0;
-    memcpy(&payload[2], &nonce, 0x04);
-
-    tc_hmac_init(&hmac_ctx);
-    tc_hmac_set_key(&hmac_ctx, HMAC_KEY, 32);
-    tc_hmac_update(&hmac_ctx, &payload[0], sizeof(payload) - 32);
-    tc_hmac_final(hmac, 32, &hmac_ctx);
-    memcpy(&payload[sizeof(payload) - 32], hmac, 32);
-
-    tc_sha256_init(&sha256_ctx);
-    tc_sha256_update(&sha256_ctx, shared_secret, 32);
-    tc_sha256_final(hash, &sha256_ctx);
-
-    if (ctr[2] != 0xDA && ctr[3] != 0xCC) {
-        memcpy(ctr, "\x00X\xDA\xCC\x00X\xDA\xCC", 8);
-        memcpy(&ctr[8], &hash[16], 0x8);
-    }
-
-    tc_aes128_set_encrypt_key(&aes_key, hash);
-    tc_ctr_mode(reinterpret_cast<uint8_t *>(&tx_packet.payload),
-                sizeof(tx_packet.payload), payload, sizeof(payload), ctr,
-                &aes_key);
-
-    tx_packet.header.checksum =
-        calc_checksum(&tx_packet.payload, sizeof(tx_packet.payload));
-
-    ++nonce;
-    send_packet<packet_type_t::SECURE>(tx_packet);
-    return payload[1];
+    while (securelen == 0) { continue; }
+    MXC_SYS_Crit_Enter();
+    memcpy(buffer, const_cast<uint8_t *>(securebuf), securelen);
+    MXC_SYS_Crit_Exit();
+    for (uint8_t i = 0; i < 255; ++i) { securebuf[i] = 0; }
+    return securelen;
 }
 
 static void boot() {
@@ -287,10 +124,10 @@ error_t component_process_cmd(const uint8_t *const data) {
     } else {
         switch (static_cast<packet_magic_t>(data[0])) {
             case packet_magic_t::ENCRYPTED_REQ:
-                ap_ready = true;
+                return process_secure_send(data);
                 break;
             case packet_magic_t::ENCRYPTED:
-                return error_t::SUCCESS;
+                return process_secure_receive(data);
                 break;
             default:
                 return error_t::ERROR;
@@ -464,6 +301,16 @@ error_t process_kex(const uint8_t *const data) {
     uECC_shared_secret(rx_packet.payload.material, private_key, shared_secret,
                        uECC_secp256r1());
 
+    uint8_t hash[32] = {};
+    tc_sha256_state_struct sha256_ctx = {};
+    tc_sha256_init(&sha256_ctx);
+    tc_sha256_update(&sha256_ctx, shared_secret, 32);
+    tc_sha256_final(hash, &sha256_ctx);
+
+    memcpy(ctr, "\x00X\xDA\xCC\x00X\xDA\xCC", 8);
+    memcpy(&ctr[8], &hash[16], 0x8);
+    memcpy(aes_key, hash, 16);
+
     packet_t<packet_type_t::KEX> tx_packet;
     tx_packet.header.magic = packet_magic_t::KEX;
     tx_packet.payload.len = 0x40;
@@ -473,6 +320,162 @@ error_t process_kex(const uint8_t *const data) {
         calc_checksum(&tx_packet.payload, sizeof(tx_packet.payload));
     send_packet<packet_type_t::KEX>(tx_packet);
     return error_t::SUCCESS;
+}
+
+error_t process_secure_send(const uint8_t *const data) {
+    uint8_t payload[sizeof(payload_t<packet_type_t::SECURE>)] = {};
+    tc_aes_key_sched_struct aes_ctx = {};
+    tc_hmac_state_struct hmac_ctx = {};
+
+    uint8_t hmac[32] = {};
+
+    packet_t<packet_type_t::SECURE_REQ> rx_packet = {};
+
+    rx_packet.header.magic = static_cast<packet_magic_t>(data[0]);
+
+    memcpy(&rx_packet.header.checksum, &data[1], 0x04);
+    memcpy(payload, &data[5], sizeof(payload));
+
+    tc_aes128_set_encrypt_key(&aes_ctx, aes_key);
+    tc_ctr_mode(reinterpret_cast<uint8_t *>(&rx_packet.payload),
+                sizeof(rx_packet.payload), payload, sizeof(payload), ctr,
+                &aes_ctx);
+
+    tc_hmac_init(&hmac_ctx);
+    tc_hmac_set_key(&hmac_ctx, HMAC_KEY, 32);
+    tc_hmac_update(&hmac_ctx, &payload[0], sizeof(payload) - 32);
+    tc_hmac_final(hmac, 32, &hmac_ctx);
+
+    const uint32_t expected_checksum = calc_checksum(payload, sizeof(payload));
+
+    if (rx_packet.header.magic != packet_magic_t::ENCRYPTED_REQ) {
+        // Invalid magic
+        return error_t::ERROR;
+    } else if (rx_packet.header.checksum != expected_checksum) {
+        // Checksum failed
+        return error_t::ERROR;
+    } else if (rx_packet.payload.magic !=
+               static_cast<uint8_t>(packet_magic_t::DECRYPTED)) {
+        // Invalid payload
+        return error_t::ERROR;
+    } else if (rx_packet.payload.nonce != nonce) {
+        // Invalid nonce
+        return error_t::ERROR;
+    } else if (memcmp(hmac, rx_packet.payload.hmac, 32) != 0) {
+        // HMAC failed
+        return error_t::ERROR;
+    } else if (rx_packet.payload.len != 0x00) {
+        // Invalid length
+        return error_t::ERROR;
+    }
+
+    packet_t<packet_type_t::SECURE> tx_packet = {};
+    tx_packet.header.magic = packet_magic_t::ENCRYPTED;
+
+    payload[0] = static_cast<uint8_t>(packet_magic_t::DECRYPTED);
+    payload[1] = securelen;
+    memcpy(&payload[2], &nonce, 0x04);
+
+    MXC_SYS_Crit_Enter();
+    memcpy(&payload[6], const_cast<uint8_t *>(securebuf), securelen);
+    MXC_SYS_Crit_Exit();
+
+    hmac_ctx = {};
+    tc_hmac_init(&hmac_ctx);
+    tc_hmac_set_key(&hmac_ctx, HMAC_KEY, 32);
+    tc_hmac_update(&hmac_ctx, &payload[0], sizeof(payload) - 32);
+    tc_hmac_final(hmac, 32, &hmac_ctx);
+    memcpy(&payload[sizeof(payload) - 32], hmac, 32);
+
+    tc_aes128_set_encrypt_key(&aes_ctx, aes_key);
+    tc_ctr_mode(reinterpret_cast<uint8_t *>(&tx_packet.payload),
+                sizeof(tx_packet.payload), payload, sizeof(payload), ctr,
+                &aes_ctx);
+
+    tx_packet.header.checksum =
+        calc_checksum(&tx_packet.payload, sizeof(tx_packet.payload));
+
+    for (uint8_t i = 0; i < 255; ++i) { securebuf[i] = 0; }
+    securelen = 0;
+    ++nonce;
+    send_packet<packet_type_t::SECURE>(tx_packet);
+    return error_t::SUCCESS;
+}
+
+error_t process_secure_receive(const uint8_t *const data) {
+    uint8_t payload[sizeof(payload_t<packet_type_t::SECURE>)] = {};
+    tc_aes_key_sched_struct aes_ctx = {};
+    tc_hmac_state_struct hmac_ctx = {};
+
+    uint8_t hmac[32] = {};
+
+    packet_t<packet_type_t::SECURE> rx_packet = {};
+    rx_packet.header.magic = static_cast<packet_magic_t>(rxbuf[0]);
+
+    memcpy(&rx_packet.header.checksum, &data[1], 0x04);
+    memcpy(payload, &data[5], sizeof(payload));
+
+    tc_aes128_set_encrypt_key(&aes_ctx, aes_key);
+    tc_ctr_mode(reinterpret_cast<uint8_t *>(&rx_packet.payload),
+                sizeof(rx_packet.payload), payload, sizeof(payload), ctr,
+                &aes_ctx);
+
+    tc_hmac_init(&hmac_ctx);
+    tc_hmac_set_key(&hmac_ctx, HMAC_KEY, 32);
+    tc_hmac_update(&hmac_ctx, &payload[0], sizeof(payload) - 32);
+    tc_hmac_final(hmac, 32, &hmac_ctx);
+
+    const uint32_t expected_checksum = calc_checksum(payload, sizeof(payload));
+
+    if (rx_packet.header.magic != packet_magic_t::ENCRYPTED) {
+        // Invalid magic
+        return error_t::ERROR;
+    } else if (rx_packet.header.checksum != expected_checksum) {
+        // Checksum failed
+        return error_t::ERROR;
+    } else if (rx_packet.payload.magic !=
+               static_cast<uint8_t>(packet_magic_t::DECRYPTED)) {
+        // Invalid payload
+        return error_t::ERROR;
+    } else if (rx_packet.payload.nonce != nonce) {
+        // Invalid nonce
+        return error_t::ERROR;
+    } else if (memcmp(hmac, rx_packet.payload.hmac, 32) != 0) {
+        // HMAC failed
+        return error_t::ERROR;
+    }
+
+    packet_t<packet_type_t::SECURE> tx_packet = {};
+    tx_packet.header.magic = packet_magic_t::ENCRYPTED;
+
+    payload[0] = static_cast<uint8_t>(packet_magic_t::DECRYPTED);
+    payload[1] = 0;
+    memcpy(&payload[2], &nonce, 0x04);
+
+    hmac_ctx = {};
+    tc_hmac_init(&hmac_ctx);
+    tc_hmac_set_key(&hmac_ctx, HMAC_KEY, 32);
+    tc_hmac_update(&hmac_ctx, &payload[0], sizeof(payload) - 32);
+    tc_hmac_final(hmac, 32, &hmac_ctx);
+    memcpy(&payload[sizeof(payload) - 32], hmac, 32);
+
+    aes_ctx = {};
+    tc_aes128_set_encrypt_key(&aes_ctx, aes_key);
+    tc_ctr_mode(reinterpret_cast<uint8_t *>(&tx_packet.payload),
+                sizeof(tx_packet.payload), payload, sizeof(payload), ctr,
+                &aes_ctx);
+
+    tx_packet.header.checksum =
+        calc_checksum(&tx_packet.payload, sizeof(tx_packet.payload));
+
+    MXC_SYS_Crit_Enter();
+    memcpy(const_cast<uint8_t *>(securebuf), rx_packet.payload.data,
+           rx_packet.payload.len);
+    MXC_SYS_Crit_Exit();
+    securelen = rx_packet.payload.len;
+
+    ++nonce;
+    send_packet<packet_type_t::SECURE>(tx_packet);
 }
 
 int main() {

@@ -197,10 +197,8 @@ static int secure_receive(const i2c_addr_t address, uint8_t *const buffer) {
     const uint8_t index = addr_to_idx(address);
 
     uint8_t payload[sizeof(payload_t<packet_type_t::SECURE>)] = {};
-    uint8_t hash[32] = {};
     tc_aes_key_sched_struct aes_key = {};
     tc_hmac_state_struct hmac_ctx = {};
-    tc_sha256_state_struct sha256_ctx = {};
 
     uint8_t hmac[32] = {};
 
@@ -209,8 +207,8 @@ static int secure_receive(const i2c_addr_t address, uint8_t *const buffer) {
         return -1;
     }
 
-    packet_t<packet_type_t::SECURE> tx_packet = {};
-    tx_packet.header.magic = packet_magic_t::ENCRYPTED;
+    packet_t<packet_type_t::SECURE_REQ> tx_packet = {};
+    tx_packet.header.magic = packet_magic_t::ENCRYPTED_REQ;
 
     payload[0] = static_cast<uint8_t>(packet_magic_t::DECRYPTED);
     payload[1] = 0;
@@ -231,7 +229,7 @@ static int secure_receive(const i2c_addr_t address, uint8_t *const buffer) {
         calc_checksum(&tx_packet.payload, sizeof(tx_packet.payload));
 
     const packet_t<packet_type_t::SECURE> rx_packet =
-        send_i2c_master_tx<packet_type_t::SECURE, packet_type_t::SECURE>(
+        send_i2c_master_tx<packet_type_t::SECURE, packet_type_t::SECURE_REQ>(
             address, tx_packet);
 
     if (rx_packet.header.magic == packet_magic_t::ERROR) {
